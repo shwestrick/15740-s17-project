@@ -64,20 +64,21 @@ Under this definition, phase-concurrent programs must rely on read-modify-write
 operations to synchronize effectively. For example, here is a phase-concurrent
 program using two processes to sum an array `a` of length `2n` and
 print the result.
-Both processes run the same code. The value `id` is the
+Both processes run the same code. The value `p` is the
 identifier of the process (in this example, either 0 or 1). Assume there is some
-shared cell `w` initially set to 2. We use `r` to store intermediate results,
+shared cell `s` initially set to 2. We use `r` to store intermediate results,
 and the RMW operation sub-and-fetch (which atomically subtracts then fetches the
 new value) to synchronize.
 
 ```
-// initially w == 2
-r[id] := 0;
-for i where id·n ≤ i < (id+1)·n {
-  r[id] := r[id] + a[i];
+// initially s == 2
+r[p] := 0;
+for i where p·n ≤ i < (p+1)·n {
+  r[p] := r[p] + a[i];
 }
-if (sub-and-fetch(w,1) == 0) {
-  print(r[0] + r[1]);
+if (sub-and-fetch(s,1) == 0) {
+  // exactly one process will execute this
+  printf("%d\n", r[0] + r[1]);
 }
 ```
 
@@ -85,6 +86,41 @@ Note that this program is actually DRF. We haven't yet discussed how to handle
 concurrent writes.
 
 ### Concurrent Writes
+
+When two or more processes concurrently write to the same location, we need to
+specify what value will be returned at the next read. We propose
+non-deterministically "choosing a winner".
+
+Specifically, consider some execution _E_ and a read operation _r_ of interest.
+Identify the most recent write _w_, and let _W_ be the set of all
+writes that are concurrent with _w_. Let _w<sub>0</sub>_ be the
+member of _W_ which occurred earliest in this execution, and _p_ be the
+identifier of the process which issued _w<sub>0</sub>_. Now identify the latest
+write in _W_ which was issued by process _p_. The value written by this write is
+the value returned by _r_.
+
+The above specification is a bit nasty, but (we claim) actually quite intuitive.
+From the perspective of a process, at each write, it either "wins" or "loses".
+If it wins, then all successive writes at the same location within the same
+phase also win. Similarly, if it loses, then all successive writes at the same
+location within the same phase also lose. At the end of a write phase, the
+winning write is committed to memory and is visible to other processes.
+
+For example, we can modify the array-sum example to print not only the sum of
+the array, but also the identifier of the process which finished their portion
+of the array first.
+
+```
+r[p] := 0;
+for i where p·n ≤ i < (p+1)·n {
+  r[p] := r[p] + a[i];
+}
+w := p;
+if (sub-and-fetch(s,1) == 0) {
+  printf("sum: %d\n", r[0] + r[1]);
+  printf("winner: %d\n", w);
+}
+```
 
 ## References
 
