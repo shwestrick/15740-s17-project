@@ -10,7 +10,7 @@ coherence schemes, some researchers have begun looking at the benefits of
 restricted forms of parallelism. For example, it could be reasonable to assume
 that parallel programs are *data-race free* (DRF). Under this restriction, it is
 possible to obtain improved performance with a simplified
-protocol.<sup>[1](#fn1),[2](#fn2)</sup>
+protocol.<sup>[1](#choi-denovo),[2](#ros-complexity)</sup>
 
 However, while DRF programs are common, there are some programs which benefit
 from "well-behaved" data races.  For example, consider the following algorithm
@@ -42,8 +42,8 @@ guarantee that concurrent writes to the same location will always be writing
 the same value. In general, we will not require this, as will be discussed in
 the next section.
 
-The term _phase-concurrency_ is inspired by Shun and Blelloch's work
-on concurrent hash tables.<sup>[3](#fn3)</sup>
+The term "phase-concurrent" is inspired by Shun and Blelloch's work
+on concurrent hash tables.<sup>[3](#shun-hash)</sup>
 
 ## Definitions and Semantics
 
@@ -57,6 +57,8 @@ Two distinct instructions _A_ and _B_ are _**concurrent**_ if there exist two
 executions _E<sub>1</sub>_ and _E<sub>2</sub>_ such that
  * _A_ appears before _B_ in _E<sub>1</sub>_, and
  * _B_ appears before _A_ in _E<sub>2</sub>_.
+
+\[TODO: are these actually good definitions?\]
 
 We distinguish between three classes of atomic memory operations: read, write,
 and read-modify-write (such as compare-and-swap, fetch-and-add, etc).
@@ -95,30 +97,33 @@ When two or more processes concurrently write to the same location, we need to
 specify what value will be returned at the next read. We propose
 non-deterministically "choosing a winner".
 
-Specifically, consider some execution _E_ and a read operation _r_ of interest.
-Identify the write _w_ which occurred most recently before _r_, and let _W_ be
-the set of all writes that are concurrent with _w_. Let _w<sub>0</sub>_ be the
-member of _W_ which occurred earliest in this execution, and _p_ be the
-identifier of the process which issued _w<sub>0</sub>_. Now identify the last
-write in _W_ which was issued by process _p_. The value written by this write is
-the value returned by _r_.
+Specifically, consider a particular execution and a read operation of interest.
+Identify the write _w_ which occurred most recently before the read, and let _W_
+be the set of all writes that are concurrent with _w_. Partition _W_ into sets
+_W<sub>p</sub>_ containing only the writes issued by process _p_. For each of
+these, identify the write _w<sub>p</sub>_ which is the last write in
+_W<sub>p</sub>_. The winning write is chosen
+non-deterministically from _{w<sub>p</sub> : 0 ≤ p < P}_.
 
 The above specification is a bit nasty, but (we claim) actually quite intuitive.
-From the perspective of a process, at each write, it either "wins" or "loses".
-If it wins, then all successive writes at the same location within the same
-phase also win. Similarly, if it loses, then all successive writes at the same
-location within the same phase also lose. At the end of a write phase, the
-winning write is committed to memory and is visible to other processes.
+For each memory location, at the end of each of its write phases, we
+non-deterministically choose one written value to be visible in the following
+read phase. The value which is chosen must be the "last" write of some process
+within that phase.
 
 For example, we can modify the array-sum example to print not only the sum of
 the array, but also the identifier of the process which finished their portion
-of the array first.
+of the array first. To illustrate the requirement that the winning write be
+the "last" write of some process, consider the assignment `w := 42` below.
+In both processes, within the same write phase of `w`, that value is
+overwritten. So it will never be visible.
 
 ```
 r[p] := 0;
 for i where p·n ≤ i < (p+1)·n {
   r[p] := r[p] + a[i];
 }
+w := 42; // this value will never be visible
 w := p;
 if (sub-and-fetch(s,1) == 0) {
   printf("sum: %d\n", r[0] + r[1]);
@@ -126,10 +131,15 @@ if (sub-and-fetch(s,1) == 0) {
 }
 ```
 
+## Cache Coherence
+
+As with DeNovo<sup>[1](#choi-denovo)</sup>, we will reuse the shared LLC as a
+directory. That is, when a processor
+
 ## References
 
-<a name="fn1">1</a>:  _Choi, Byn, et al. "DeNovo: Rethinking the memory hierarchy for disciplined parallelism." Parallel Architectures and Compilation Techniques (PACT), 2011 International Conference on. IEEE, 2011._
+<a name="choi-denovo">1</a>:  _Choi, Byn, et al. "DeNovo: Rethinking the memory hierarchy for disciplined parallelism." Parallel Architectures and Compilation Techniques (PACT), 2011 International Conference on. IEEE, 2011._
 
-<a name="fn2">2</a>: _Ros, Alberto, and Stefanos Kaxiras. "Complexity-effective multicore coherence." Proceedings of the 21st international conference on Parallel architectures and compilation techniques. ACM, 2012._
+<a name="ros-complexity">2</a>: _Ros, Alberto, and Stefanos Kaxiras. "Complexity-effective multicore coherence." Proceedings of the 21st international conference on Parallel architectures and compilation techniques. ACM, 2012._
 
-<a name="fn3">3</a>: _Shun, Julian, and Guy E. Blelloch. "Phase-concurrent hash tables for determinism." Proceedings of the 26th ACM Symposium on Parallelism in Algorithms and Architectures. ACM, 2014._
+<a name="shun-hash">3</a>: _Shun, Julian, and Guy E. Blelloch. "Phase-concurrent hash tables for determinism." Proceedings of the 26th ACM Symposium on Parallelism in Algorithms and Architectures. ACM, 2014._
