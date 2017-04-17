@@ -55,8 +55,8 @@ single instruction.)
 
 Two distinct instructions _A_ and _B_ are _**concurrent**_ if there exist two
 executions _E<sub>1</sub>_ and _E<sub>2</sub>_ such that
- * _A_ appears before _B_ in _E<sub>1</sub>_, and
- * _B_ appears before _A_ in _E<sub>2</sub>_.
+  * _A_ appears before _B_ in _E<sub>1</sub>_, and
+  * _B_ appears before _A_ in _E<sub>2</sub>_.
 
 \[TODO: are these actually good definitions?\]
 
@@ -133,13 +133,72 @@ if (sub-and-fetch(s,1) == 0) {
 
 ## Cache Coherence
 
-As with DeNovo<sup>[1](#choi-denovo)</sup>, we will reuse the shared LLC as a
-directory. That is, when a processor
+One of the primary challenges in developing a cache coherence protocol for
+phase-concurrent programs is managing winners and losers at writes. Some
+existing techniques can be recycled here. For example, Choi et
+al<sup>[1](#choi-denovo)</sup> proposed reusing the shared LLC as a directory,
+allowing them to track the "owner" of a modified cache line with no asymptotic
+space overhead. We will do the same, where the "owner" of a modified cache line
+is now the "winner" of that line.
+
+At the end of a write phase, we need to commit the winning write back to the
+shared cache so that it is visible to other processes. Although we could rely
+on programmer-directed cache self-invalidations, we would rather not do so.
+Instead, we will conservatively guess that each synchronization instruction is
+a barrier which signals the end of a phase.
+
+Each line in an L1 cache can be in one of 7 states:
+  1. (**ED**) Exclusive Dirty
+    * I have the only copy of this line.
+    * This copy is dirty.
+  1. (**EC**) Exclusive Clean
+    * I have the only copy of this line.
+    * This copy is clean.
+  1. (**W**) Winner
+    * I have the only copy of this line.
+    * This copy is dirty.
+    * Someone else tried to concurrently write to this line.
+  1. (**S**) Shared
+    * I have one of (possibly) many copies of this line.
+    * This copy is clean.
+  1. (**O**) Old
+    * I have one of (possibly) many copies of this line.
+    * This copy is clean.
+    * I need to self-invalidate this copy at the next barrier.
+  1. (**L**) Loser
+    * I do not have a copy of this line.
+    * Someone else tried to concurrently write to this line.
+  1. (**I**) Invalid
+    * I do not have a copy of this line.
+
+Each line in the shared LLC can be in one of 4 states:
+  1. (**R<sub>p</sub>**) Registered with _p_
+    * Processor _p_ has the only copy of this line.
+  1. (**V**) Valid
+    * I have the only copy of this line.
+  1. (**S**) Shared
+    * I have one of (possibly) many copies of this line.
+  1. (**I**) Invalid
+    * I do not have a copy of this line, and neither does anyone else.
+
+The inputs which are visible to the L1 cache are
+  1. (**Wr**) Write
+  1. (**R**) Read
+  1. (**B**) Barrier
+  1. (**C**) Conflict
+  1. (**F**) Forward
 
 ## References
 
-<a name="choi-denovo">1</a>:  _Choi, Byn, et al. "DeNovo: Rethinking the memory hierarchy for disciplined parallelism." Parallel Architectures and Compilation Techniques (PACT), 2011 International Conference on. IEEE, 2011._
+<a name="choi-denovo">1</a>:  _Choi, Byn, et al. "DeNovo: Rethinking the memory
+hierarchy for disciplined parallelism." Parallel Architectures and Compilation
+Techniques (PACT), 2011 International Conference on. IEEE, 2011._
 
-<a name="ros-complexity">2</a>: _Ros, Alberto, and Stefanos Kaxiras. "Complexity-effective multicore coherence." Proceedings of the 21st international conference on Parallel architectures and compilation techniques. ACM, 2012._
+<a name="ros-complexity">2</a>: _Ros, Alberto, and Stefanos Kaxiras.
+"Complexity-effective multicore coherence." Proceedings of the 21st
+international conference on Parallel architectures and compilation techniques.
+ACM, 2012._
 
-<a name="shun-hash">3</a>: _Shun, Julian, and Guy E. Blelloch. "Phase-concurrent hash tables for determinism." Proceedings of the 26th ACM Symposium on Parallelism in Algorithms and Architectures. ACM, 2014._
+<a name="shun-hash">3</a>: _Shun, Julian, and Guy E. Blelloch. "Phase-concurrent
+hash tables for determinism." Proceedings of the 26th ACM Symposium on
+Parallelism in Algorithms and Architectures. ACM, 2014._
