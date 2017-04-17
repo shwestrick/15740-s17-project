@@ -18,17 +18,20 @@ which generates all prime numbers less than `n` in parallel, based on the Sieve
 of Eratosthenes.
 
 ```
-function primes(n) =
+function primes(n) {
   if n < 2 then return {};
   let isPrime = [true : 0 ≤ i < n];
-  foreach p in primes(√n)
-    foreach k where 2 ≤ k < ⌊n/p⌋
+  foreach p in primes(√n) {
+    foreach k where 2 ≤ k < ⌊n/p⌋ {
       isPrime[p·k] := false;
+    }
+  }
   return {i : 2 ≤ i < n | isPrime[i]};
+}
 ```
 
 This algorithm relies on multiple processors writing to the same flag at the
-same time (write-write races) ,and is therefore not DRF. However, it does not
+same time (write-write races), and is therefore not DRF. However, it does not
 exhibit read-write races. In this sense its memory accesses are
 _phase-concurrent_, meaning that memory cells alternate between concurrent read
 and concurrent write phases. During a read phase, a cell is read-only. During a
@@ -56,6 +59,32 @@ and read-modify-write (such as compare-and-swap, fetch-and-add, etc).
 We say that a multi-threaded program is
 _**phase-concurrent**_ if all concurrent operations at the same memory location
 are of the same class.
+
+Under this definition, phase-concurrent programs must rely on read-modify-write
+operations to synchronize effectively. For example, here is a phase-concurrent
+program using two processes to sum an array `a` of length `2n` and
+print the result.
+Both processes run the same code. The value `id` is the
+identifier of the process (in this example, either 0 or 1). Assume there is some
+shared cell `w` initially set to 2. We use `r` to store intermediate results,
+and the RMW operation sub-and-fetch (which atomically subtracts then fetches the
+new value) to synchronize.
+
+```
+// initially w == 2
+r[id] := 0;
+for i where id·n ≤ i < (id+1)·n {
+  r[id] := r[id] + a[i];
+}
+if (sub-and-fetch(w,1) == 0) {
+  print(r[0] + r[1]);
+}
+```
+
+Note that this program is actually DRF. We haven't yet discussed how to handle
+concurrent writes.
+
+### Concurrent Writes
 
 ## References
 
