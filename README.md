@@ -96,10 +96,10 @@ specify what value will be returned at the next read. We propose
 non-deterministically "choosing a winner".
 
 Specifically, consider some execution _E_ and a read operation _r_ of interest.
-Identify the most recent write _w_, and let _W_ be the set of all
-writes that are concurrent with _w_. Let _w<sub>0</sub>_ be the
+Identify the write _w_ which occurred most recently before _r_, and let _W_ be
+the set of all writes that are concurrent with _w_. Let _w<sub>0</sub>_ be the
 member of _W_ which occurred earliest in this execution, and _p_ be the
-identifier of the process which issued _w<sub>0</sub>_. Now identify the latest
+identifier of the process which issued _w<sub>0</sub>_. Now identify the last
 write in _W_ which was issued by process _p_. The value written by this write is
 the value returned by _r_.
 
