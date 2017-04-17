@@ -48,8 +48,12 @@ on concurrent hash tables.<sup>[3](#fn3)</sup>
 ## Definitions and Semantics
 
 A _**program**_
-consists of _P_ streams of instructions, where _P_ is the number of processes.
-An _**execution**_ is an interleaving of those _P_ streams into one. Two distinct instructions _A_ and _B_ are _**concurrent**_ if there exist two
+consists of _P_ dynamic streams of instructions, where _P_ is the number of processes.
+An _**execution**_ is an interleaving of those _P_ streams, produced by some
+scheduler. (At each time step, the scheduler lets one stream advance by a
+single instruction.)
+
+Two distinct instructions _A_ and _B_ are _**concurrent**_ if there exist two
 executions _E<sub>1</sub>_ and _E<sub>2</sub>_ such that
  * _A_ appears before _B_ in _E<sub>1</sub>_, and
  * _B_ appears before _A_ in _E<sub>2</sub>_.
