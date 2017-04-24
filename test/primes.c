@@ -23,9 +23,10 @@ inline int fetch(int* loc) {
 int P;
 bool* isPrime;
 long offset;
-long range;
+long n;
 long N;
 
+// TODO: better barrier
 int foo[65];
 int* IN_BARRIER = foo;
 int* SENSE = foo + 64;
@@ -43,36 +44,37 @@ void barrier(int tid, void (*f)(void)) {
 }
 
 void advance() {
-  offset = range;
-  range = min(N, range * range);
+  offset = n;
+  n = min(N, n * n);
 }
 
 void nop() { return; }
 
-//void sieve(long n) {
-//  for (long k = 2; k < 
+void initializeFlags(int tid) {
+  long chunk = max(1, N / P);
+  long lo = min(N, tid * chunk);
+  long hi = min(N, lo + chunk);
+  for (long i = lo; i < hi; i++) isPrime[i] = true;
+  barrier(tid, nop);
+}
 
 void* markPrimes(void* arg) {
   int tid = *((int*) arg);
 
-  /* initialization phase */
-  {
-    long chunk = max(1, N / P);
-    long lo = min(N, tid * chunk);
-    long hi = min(N, lo + chunk);
-    for (long i = lo; i < hi; i++) isPrime[i] = true;
-    barrier(tid, nop);
-  }
+  initializeFlags(tid);
 
-  while (range - offset > 0) {
-    long m = range - offset;
+  while (n < N) {
+    long m = n - offset;
     long chunk = max(1, m / P);
 
     long lo = min(m, tid * chunk);
     long hi = min(m, lo + chunk);
 
+    // TODO: parallelize this loop too.
     for (long k = offset + lo; k < offset + hi; k++) {
-      if (isPrime[k]) for (long f = 2; f*k < N; f++) isPrime[f*k] = false;
+      if (isPrime[k]) {
+        for (long f = 2; f*k < N; f++) isPrime[f*k] = false;
+      }
     }
     
     barrier(tid, advance);
@@ -93,7 +95,7 @@ int main(int argc, char** argv) {
 
   isPrime = malloc(N * sizeof(long));
   offset = 2;
-  range = 4;
+  n = 4;
 
   // Spawn threads
   for (int t = P-1; t >= 0; t--) {
@@ -105,7 +107,7 @@ int main(int argc, char** argv) {
   // Cleanup
   // printf("Cleanup...\n");
   for (int t = 1; t < P; t++) pthread_join(threads[t], NULL);
-  //for (long k = 2; k < N; k++) if (isPrime[k]) printf("%ld ", k);
+  // for (long k = 2; k < N; k++) if (isPrime[k]) printf("%ld ", k);
   free(isPrime);
   // printf("Done.\n");
 
