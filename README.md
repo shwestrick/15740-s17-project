@@ -3,7 +3,7 @@
 By Anson Kahng, Charlie McGuffey, and Sam Westrick ({<tt>akahng</tt>,<tt>cmcguffe</tt>,<tt>swestric</tt>} at <tt>cs.cmu.edu</tt>).
 Course Project for 15-740 Computer Architecture, Spring 2017.
 
-## Introduction
+## 1 Introduction
 
 In an effort to simplify the complexity and improve the scalability of cache
 coherence schemes, some researchers have begun looking at the benefits of
@@ -45,7 +45,7 @@ the next section.
 The term "phase-concurrent" is inspired by Shun and Blelloch's work
 on concurrent hash tables.<sup>[3](#shun-hash)</sup>
 
-## Definitions and Semantics
+## 2 Definitions and Semantics
 
 A _**program**_
 consists of _P_ dynamic streams of instructions, where _P_ is the number of processes.
@@ -91,7 +91,7 @@ if (sub-and-fetch(s,1) == 0) {
 Note that this program is actually DRF. We haven't yet discussed how to handle
 concurrent writes.
 
-### Concurrent Writes
+### 2.1 Concurrent Writes
 
 When two or more processes concurrently write to the same location, we need to
 specify what value will be returned at the next read. We propose
@@ -131,7 +131,7 @@ if (sub-and-fetch(s,1) == 0) {
 }
 ```
 
-## Cache Coherence
+## 3 Cache Coherence
 
 One of the primary challenges in developing a cache coherence protocol for
 phase-concurrent programs is managing winners and losers at writes. Some
@@ -158,19 +158,14 @@ here.
   1. (**L**) Loser
   1. (**I**) Invalid
 
-|               | D | C | W | S | O | L | I |
-|---------------|---|---|---|---|---|---|---|
-| only copy     | X | X | X |   |   |   |   |
-| shared copy   |   |   |   | X | X |   |   |
-| no data       |   |   |   |   |   | X | X |
-| dirty         | X |   | X |   |   |   |   |
-| clean         |   | X |   | X | X |   |   |
+|               | D        | C        | W        | S        | O        | L        | I        |
+|---------------|----------|----------|----------|----------|----------|----------|----------|
+| dirty         | &#10003; |          | &#10003; |          |          |          |          |
+| clean         |          | &#10003; |          | &#10003; | &#10003; |          |          |
+| only copy     | &#10003; | &#10003; | &#10003; |          |          |          |          |
+| shared copy   |          |          |          | &#10003; | &#10003; |          |          |
+| no data       |          |          |          |          |          | &#10003; | &#10003; |
 
-Each line in the shared LLC can be in one of 4 states:
-  1. (**R<sub>p</sub>**) Registered with _p_
-  1. (**V**) Valid
-  1. (**S**) Shared
-  1. (**I**) Invalid
 
 The inputs which are visible to the L1 cache are
   1. (**Wr**) Write
@@ -178,6 +173,25 @@ The inputs which are visible to the L1 cache are
   1. (**B**) Barrier
   1. (**C**) Conflict
   1. (**F**) Forward
+
+These produce the following transitions. Transitions marked "&#9785;" are an error,
+"\-" are impossible, and "\*" require communicating with the directory. A
+transition of the form _X_/_Y_ may go to either _X_ or _Y_, as dictated by the
+directory.
+
+|        |  D  |  C   |  W      |  S     |  O     |  L      |  I    |
+|:------:|:---:|:----:|:-------:|:------:|:------:|:-------:|:-----:|
+| **Wr** |  D  |  D   |  W      |  W/L*  |  W/L*  |  L      |  D/L* |
+| **R**  |  D  |  C   | &#9785; |  S     |  S     | &#9785; |  C/S* |
+| **B**  |  C  |  C   |  S*     |  O     |  I*    |  I      |  I    |
+| **C**  |  W  |  L   |  W      |  -     |  -     |  -      |  -    |
+| **F**  |  -  |  S*  |  -      |  -     |  -     |  -      |  -    |
+
+Each line in the shared LLC can be in one of 4 states:
+  1. (**R<sub>p</sub>**) Registered with _p_
+  1. (**V**) Valid
+  1. (**S**) Shared
+  1. (**I**) Invalid
 
 ## References
 
