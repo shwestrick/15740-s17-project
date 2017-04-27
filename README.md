@@ -147,39 +147,30 @@ on programmer-directed cache self-invalidations, we would rather not do so.
 Instead, we will conservatively guess that each synchronization instruction is
 a barrier which signals the end of a phase.
 
-Each line in an L1 cache can be in one of 7 states:
-  1. (**ED**) Exclusive Dirty
-    * I have the only copy of this line.
-    * This copy is dirty.
-  1. (**EC**) Exclusive Clean
-    * I have the only copy of this line.
-    * This copy is clean.
+Each line in an L1 cache can be in one of 7 states. We summarize them briefly
+here.
+
+  1. (**D**) Exclusive Dirty
+  1. (**C**) Exclusive Clean
   1. (**W**) Winner
-    * I have the only copy of this line.
-    * This copy is dirty.
-    * Someone else tried to concurrently write to this line.
   1. (**S**) Shared
-    * I have one of (possibly) many copies of this line.
-    * This copy is clean.
   1. (**O**) Old
-    * I have one of (possibly) many copies of this line.
-    * This copy is clean.
-    * I need to self-invalidate this copy at the next barrier.
   1. (**L**) Loser
-    * I do not have a copy of this line.
-    * Someone else tried to concurrently write to this line.
   1. (**I**) Invalid
-    * I do not have a copy of this line.
+
+|               | D | C | W | S | O | L | I |
+|---------------|---|---|---|---|---|---|---|
+| only copy     | X | X | X |   |   |   |   |
+| shared copy   |   |   |   | X | X |   |   |
+| no data       |   |   |   |   |   | X | X |
+| dirty         | X |   | X |   |   |   |   |
+| clean         |   | X |   | X | X |   |   |
 
 Each line in the shared LLC can be in one of 4 states:
   1. (**R<sub>p</sub>**) Registered with _p_
-    * Processor _p_ has the only copy of this line.
   1. (**V**) Valid
-    * I have the only copy of this line.
   1. (**S**) Shared
-    * I have one of (possibly) many copies of this line.
   1. (**I**) Invalid
-    * I do not have a copy of this line, and neither does anyone else.
 
 The inputs which are visible to the L1 cache are
   1. (**Wr**) Write
