@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "concurrency.h"
+#include "utils.h"
 
 int main(int argc, char** argv) {
   int P = argc > 1 ? atoi(argv[1]) : 4;         // number of concurrent threads
   int N = argc > 2 ? atoi(argv[2]) : 100000000; // size of array
   
-  concurrency_init();
+  barrier B;
+  barrier_init(&B, P);
 
   pthread_t threads[P];
   int thread_ids[P];
@@ -16,16 +17,16 @@ int main(int argc, char** argv) {
   long* data = malloc(N * sizeof(long));
 
   void* threadFunc(void* arg) {
-    int id = *((int*) arg);
+    int tid = *((int*) arg);
 
-    long lo = id * (N/P);
-    long hi = (id+1) * (N/P);
+    long lo = tid * (N/P);
+    long hi = (tid+1) * (N/P);
     if (hi > N) hi = N;
 
     for (long i = lo; i < hi; i++) data[i] = 0;
-    barrier(id, P, nop);
+    synchronize(&B, tid);
     for (long i = lo; i < hi; i++) data[i] += 1;
-    barrier(id, P, nop);
+    synchronize(&B, tid);
     for (long i = lo; i < hi; i++) data[i] += 1;
 
     return NULL;

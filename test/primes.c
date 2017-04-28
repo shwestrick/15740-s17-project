@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "concurrency.h"
+#include "utils.h"
 
 long min(long a, long b) {
   return a < b ? a : b;
@@ -19,6 +19,8 @@ bool* isPrime;
 long offset;
 long n;
 
+barrier B;
+
 void advance() {
   offset = n;
   n = min(N, n * n);
@@ -29,7 +31,7 @@ void initializeFlags(int tid) {
   long lo = min(N, tid * chunk);
   long hi = min(N, lo + chunk);
   for (long i = lo; i < hi; i++) isPrime[i] = true;
-  barrier(tid, P, nop);
+  synchronize(&B, tid);
 }
 
 void* markPrimes(void* arg) {
@@ -51,17 +53,17 @@ void* markPrimes(void* arg) {
       }
     }
     
-    barrier(tid, P, advance);
+    synchronize_before(advance, &B, tid);
   }
 
   return NULL;
 }
 
 int main(int argc, char** argv) {
-  P = argc > 1 ? atoi(argv[1]) : 4;         // number of concurrent threads
+  P = argc > 1 ? atoi(argv[1]) : 1;         // number of concurrent threads
   N = argc > 2 ? atol(argv[2]) : 100000000; // size of array
 
-  concurrency_init();
+  barrier_init(&B, P);
 
   pthread_t threads[P];
   int thread_ids[P];
