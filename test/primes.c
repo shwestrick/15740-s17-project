@@ -46,9 +46,9 @@ void* markPrimes(void* arg) {
     long lo = min(m, tid * chunk);
     long hi = min(m, lo + chunk);
 
-    // TODO: parallelize this loop too.
     for (long k = offset + lo; k < offset + hi; k++) {
       if (isPrime[k]) {
+        // TODO: parallelize this loop too.
         for (long f = 2; f*k < N; f++) isPrime[f*k] = false;
       }
     }

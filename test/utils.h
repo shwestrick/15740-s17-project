@@ -29,11 +29,10 @@ inline unsigned long hashl(unsigned long x) {
 }
 
 inline long random_range(long seed, long lo, long hi) {
-  if (hi <= lo) hi = lo+1;
-  return lo + (hashl(seed) % (hi - lo));
+  long n = hi - lo;
+  long m = hashl(seed) % n;
+  return lo + (m < 0 ? m + n : m);
 }
-
-// TODO: better barrier
 
 typedef struct {
   int seed;
@@ -75,7 +74,7 @@ void synchronize_before(void (*f)(void), barrier* b, int tid) {
     int w = ceil(log(b->procs)/log(2));
     long myseed = (tid << (sizeof(long)-w)) | seed;
     while (fetch(sense(b)) != s) {
-      blink(random_range(myseed, 0, long_min(10000000, 2 << tries))); 
+      blink(random_range(myseed, 1, long_min(10000000, 2 << tries))); 
       tries++;
       myseed++;
     }
