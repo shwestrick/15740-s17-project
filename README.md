@@ -224,11 +224,15 @@ Transitions for the directory:
 |--------------------|---------------|---|---|
 | **Wr<sub>i</sub>** | Reject _i_; <br> Send **Co** to _p_; <br> R<sub>p</sub> | Accept _i_; <br> R<sub>i</sub> | Get data from mem; <br> Accept _i_; <br> R<sub>i</sub>
 | **Ac<sub>i</sub>** | Reject _i_; <br> Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> | Reject _i_; <br> Send data; <br> V |  Get data from mem; <br> Accept _i_; <br> R<sub>i</sub>
-| **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> S<sub>1</sub> | &#9785; | &#9785;
+| **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> V | &#9785; | &#9785;
 | **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V | V | &#9785;
 | **Ev** | broadcast **Ev** | broadcast **Ev** | -
 
-Directory problem: how do we send people into exclusive?
+TODO: split R<sub>p</sub> into D<sub>p</sub> and C<sub>p</sub>,
+indicating whether or not the owner is dirty or clean. The owner
+then has to send a message to the directory on C->D and D->C
+transitions. This allows us to correctly mark a new writer as the
+dirty owner of a line when someone already owned it in clean.
 
 ## References
 
