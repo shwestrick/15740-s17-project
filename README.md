@@ -138,25 +138,27 @@ phase-concurrent programs is managing winners and losers at writes. Some
 existing techniques can be recycled here. For example, Choi et
 al<sup>[1](#choi-denovo)</sup> proposed reusing the shared LLC as a directory,
 allowing them to track the "owner" of a modified cache line with no asymptotic
-space overhead. We will do the same, where the "owner" of a modified cache line
-is now the "winner" of that line.
+space overhead. We will utilize a similar trick. **From now on, we will refer
+to the shared LLC and the directory interchangeably.**
 
 At the end of a write phase, we need to commit the winning write back to the
-shared cache so that it is visible to other processes. Although we could rely
+directory so that it is visible to other processes. Although we could rely
 on programmer-directed cache self-invalidations, we would rather not do so.
 Instead, we will conservatively guess that each synchronization instruction is
 a barrier which signals the end of a phase.
+
+### 3.1 Local Caches
 
 Each line in an L1 cache can be in one of 7 states. We summarize them briefly
 here.
 
   1. (**D**) Exclusive Dirty
-  1. (**C**) Exclusive Clean
-  1. (**W**) Winner
-  1. (**S**) Shared
-  1. (**O**) Old
-  1. (**L**) Loser
-  1. (**I**) Invalid
+  2. (**C**) Exclusive Clean
+  3. (**W**) Winner
+  4. (**S**) Shared
+  5. (**O**) Old
+  6. (**L**) Loser
+  7. (**I**) Invalid
 
 |               | D        | C        | W        | S        | O        | L        | I        |
 |---------------|----------|----------|----------|----------|----------|----------|----------|
@@ -167,31 +169,64 @@ here.
 | no data       |          |          |          |          |          | &#10003; | &#10003; |
 
 
-The inputs which are visible to the L1 cache are
-  1. (**Wr**) Write
-  1. (**R**) Read
-  1. (**B**) Barrier
-  1. (**C**) Conflict
-  1. (**F**) Forward
+The inputs which are visible to the _i<sup>th</sup>_ L1 cache are
+  1. (**Wr**) Write, issued by processor _i_.
+  2. (**Re**) Read, issued by processor _i_.
+  3. (**Ba**) Barrier, issued by processor _i_.
+  4. (**Co**) Conflict, issued by the directory, indicating a write by some other processor _j_.
+  5. (**Fo**) Forward, issued by the directory, indicating a read by some other
+  processor _j_.
+  6. (**Ev**) Eviction, issued by the _i<sup>th</sup>_ cache itself.
 
 These produce the following transitions. Transitions marked "&#9785;" are an error,
-"\-" are impossible, and "\*" require communicating with the directory. A
+"\-" are impossible, "\*" requires sending data to the directory, and "\*\*" requires both sending and receiving data from the directory. A
 transition of the form _X_/_Y_ may go to either _X_ or _Y_, as dictated by the
 directory.
 
-|        |  D  |  C   |  W      |  S     |  O     |  L      |  I    |
-|:------:|:---:|:----:|:-------:|:------:|:------:|:-------:|:-----:|
-| **Wr** |  D  |  D   |  W      |  W/L*  |  W/L*  |  L      |  D/L* |
-| **R**  |  D  |  C   | &#9785; |  S     |  S     | &#9785; |  C/S* |
-| **B**  |  C  |  C   |  S*     |  O     |  I*    |  I      |  I    |
-| **C**  |  W  |  L   |  W      |  -     |  -     |  -      |  -    |
-| **F**  |  -  |  S*  |  -      |  -     |  -     |  -      |  -    |
+|        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
+|:------:|:---:|:----:|:-------:|:-------:|:-------:|:-------:|:------:|
+| **Wr** |  D  |  D   |  W      |  W/L**  |  W/L**  |  L      |  D/L** |
+| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  C/S** |
+| **Ba** |  C  |  C   |  S*     |  O      |  I*     |  I      |  I     |
+| **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
+| **Fo** |  -  |  S*  |  -      |  -      |  -      |  -      |  -     |
+| **Ev** |  I* |  I*  |  I*     |  I*     |  I*     |  I      |  -     |
 
-Each line in the shared LLC can be in one of 4 states:
-  1. (**R<sub>p</sub>**) Registered with _p_
-  1. (**V**) Valid
-  1. (**S**) Shared
-  1. (**I**) Invalid
+Transitions for L1 cache _i_:
+
+|        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
+|------|---|----|-------|-------|-------|-------|------|
+| **Wr** |  D  |  D   |  W      |  Send **Ov<sub>i</sub>**; <br> W/L  |  Send **Ov<sub>i</sub>**; <br> W/L  |  L      |  Send **Wr<sub>i</sub>**; <br> W/L |
+| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  Send **Re<sub>i</sub>**; <br> C/S |
+| **Ba** |  C  |  C   |  Send **Sh<sub>i</sub>**; <br> S     |  O      |  Send **Fl<sub>i</sub>**; <br> I     |  I      |  I     |
+| **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
+| **Fo** |  -  |  Send data; <br> S  |  -      |  -      |  -      |  -      |  -     |
+| **Ev** |  Send **Fl<sub>i</sub>**; <br> I |  Send **Fl<sub>i</sub>**; <br> I  |  Send **Fl<sub>i</sub>**; <br> I     |  Send **Fl<sub>i</sub>**; <br> I     |  Send **Fl<sub>i</sub>**; <br> I     |  I      |  -     |
+
+### 3.2 Directory
+
+Each line in the directory can be in one of 3 states:
+  1. (**R<sub>p</sub>**) Registered with _p_ (_0 ≤ p < P_)
+  2. (**S<sub>k</sub>**) Shared amongst _k_ processors (_0 ≤ k ≤ P_)
+  3. (**V**) Valid
+  4. (**I**) Invalid
+
+The inputs which are visible to the directory are the following, indexed by the processor id of the sender.
+  1. (**Ov<sub>i</sub>**) Overwrite (processor _i_ is a sharer)
+  2. (**Wr<sub>i</sub>**) Write (processor _i_ is not a sharer)
+  3. (**Re<sub>i</sub>**) Read
+  4. (**Sh<sub>i</sub>**) Share
+  4. (**Fl<sub>i</sub>**) Flush
+
+These produce the following transitions.
+
+|                    | R<sub>p</sub> | S<sub>k</sub> | V | I |
+|--------------------|---------------|---------------|---|---|
+| **Ov<sub>i</sub>** | Send **Co** to _p_; <br> R<sub>p</sub> |
+| **Wr<sub>i</sub>** | Send **Co** to _p_; <br> R<sub>p</sub>
+| **Re<sub>i</sub>** | Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> S<sub>2</sub>
+| **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> S<sub>1</sub>
+| **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V
 
 ## References
 
