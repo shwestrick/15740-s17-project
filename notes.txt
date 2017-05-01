@@ -1,0 +1,22 @@
+Some old text from README.md
+
+|               | D        | C        | W        | S        | O        | L        | I        |
+|---------------|----------|----------|----------|----------|----------|----------|----------|
+| dirty         | &#10003; |          | &#10003; |          |          |          |          |
+| clean         |          | &#10003; |          | &#10003; | &#10003; |          |          |
+| only copy     | &#10003; | &#10003; | &#10003; |          |          |          |          |
+| shared copy   |          |          |          | &#10003; | &#10003; |          |          |
+| no data       |          |          |          |          |          | &#10003; | &#10003; |
+
+These produce the following transitions. Transitions marked "&#9785;" are an error,
+"\-" are impossible, "\*" requires sending data to the directory, and "\*\*" requires both sending and receiving data from the directory. A
+transition of the form _X_/_Y_ may go to either _X_ or _Y_, as dictated by the
+directory.
+|        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
+|:------:|:---:|:----:|:-------:|:-------:|:-------:|:-------:|:------:|
+| **Wr** |  D  |  D   |  W      |  W/L**  |  W/L**  |  L      |  D/L** |
+| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  C/S** |
+| **Ba** |  C  |  C   |  S*     |  O      |  I*     |  I      |  I     |
+| **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
+| **Fo** |  -  |  S*  |  -      |  -      |  -      |  -      |  -     |
+| **Ev** |  I* |  I*  |  I*     |  I*     |  I*     |  I      |  -     |
