@@ -186,7 +186,7 @@ Each line in the directory can be in one of 4 states:
   4. (**I**) **Invalid**: this line is not in the directory.
 
 For a particular line in the directory, the events which cause state transitions
-are as follows. They are indexed by the processor id of the sender.
+are as follows. Except for **Ev**, they are indexed by the processor id of the sender.
   1. (**Wr<sub>i</sub>**) **Write**: processor _i_ wants to write to this line.
   The directory has to respond to this message with either an accept or reject.
   2. (**Ac<sub>i</sub>**) **Acquire**: processor _i_ wants to read from this line,
@@ -197,6 +197,7 @@ are as follows. They are indexed by the processor id of the sender.
   contents of the line.
   4. (**Fl<sub>i</sub>**) **Flush**: processor _i_ wants to push this line out
   of its cache. This message also contains the contents of the line.
+  5. (**Ev**) Eviction: an eviction of this line due to the local caching policy.
 
 ### 3.3 Protocol
 
@@ -209,7 +210,7 @@ _X_ if the directory replies with an accept and _Y_ if it rejects. Cells marked
 
 |        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
 |------|---|----|-------|-------|-------|-------|------|
-| **Wr** |  D  |  D   |  W      |  Send **Wr<sub>i</sub>**; <br> W/L  |  Send **Wr<sub>i</sub>**; <br> W/L  |  L      |  Send **Wr<sub>i</sub>**; <br> W/L |
+| **Wr** |  D  |  D   |  W      |  &#9785;  |  Send **Wr<sub>i</sub>**; <br> D/L  |  L      |  Send **Wr<sub>i</sub>**; <br> D/L |
 | **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  Send **Ac<sub>i</sub>**; <br> Receive data; <br> C/S |
 | **Ba** |  C  |  C   |  Send **Sh<sub>i</sub>**; <br> S     |  O      |  Send **Fl<sub>i</sub>**; <br> I     |  I      |  I     |
 | **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
@@ -219,12 +220,15 @@ _X_ if the directory replies with an accept and _Y_ if it rejects. Cells marked
 
 Transitions for the directory:
 
-|                    | R<sub>p</sub> | S<sub>k</sub> | V | I |
-|--------------------|---------------|---------------|---|---|
-| **Wr<sub>i</sub>** | Reject _i_; <br> Send **Co** to _p_; <br> R<sub>p</sub> | Accept _i_; <br> R<sub>i</sub> | Accept _i_; <br> R<sub>i</sub>
-| **Ac<sub>i</sub>** | Reject _i_; <br> Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> S<sub>2</sub> | **TODO: S<sub>k</sub> is broken** | Reject _i_; <br> Send data; <br> V
+|                    | R<sub>p</sub> | V | I |
+|--------------------|---------------|---|---|
+| **Wr<sub>i</sub>** | Reject _i_; <br> Send **Co** to _p_; <br> R<sub>p</sub> | Accept _i_; <br> R<sub>i</sub> | Get data from mem; <br> Accept _i_; <br> R<sub>i</sub>
+| **Ac<sub>i</sub>** | Reject _i_; <br> Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> | Reject _i_; <br> Send data; <br> V |  Get data from mem; <br> Accept _i_; <br> R<sub>i</sub>
 | **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> S<sub>1</sub> | &#9785; | &#9785;
-| **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V | Receive data; <br> if _k=1_ then V else S<sub>k-1</sub> | V
+| **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V | V | &#9785;
+| **Ev** | broadcast **Ev** | broadcast **Ev** | -
+
+Directory problem: how do we send people into exclusive?
 
 ## References
 
