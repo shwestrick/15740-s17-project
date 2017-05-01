@@ -152,81 +152,79 @@ a barrier which signals the end of a phase.
 Each line in an L1 cache can be in one of 7 states. We summarize them briefly
 here.
 
-  1. (**D**) Exclusive Dirty
-  2. (**C**) Exclusive Clean
-  3. (**W**) Winner
-  4. (**S**) Shared
-  5. (**O**) Old
-  6. (**L**) Loser
-  7. (**I**) Invalid
+  1. (**D**) **Exclusive Dirty**: this is the only copy of the line in the system, and it is dirty. No other processors have tried to concurrently write to or read from this line.
+  2. (**C**) **Exclusive Clean**: this is the only copy of the line in the system, and it is clean. No other processors have tried to concurrently write to or read from this line.
+  3. (**W**) **Winner**: this is the only copy of the line in the system, and it is dirty. At least one other
+  processor has tried to concurrently write to this line.
+  4. (**S**) **Shared**: this is one of (possibly) many copies of the line in the system, all of which are clean.
+  5. (**O**) **Old**: this is one of (possibly) many copies of the line in the system, all of which are clean. At the next barrier, this line needs to be self-invalidated.
+  6. (**L**) **Loser**: this line is held in the cache but the data is invalid, due to some other processor having concurrently written to this line.
+  7. (**I**) **Invalid**: this line is not in the cache.
 
-|               | D        | C        | W        | S        | O        | L        | I        |
-|---------------|----------|----------|----------|----------|----------|----------|----------|
-| dirty         | &#10003; |          | &#10003; |          |          |          |          |
-| clean         |          | &#10003; |          | &#10003; | &#10003; |          |          |
-| only copy     | &#10003; | &#10003; | &#10003; |          |          |          |          |
-| shared copy   |          |          |          | &#10003; | &#10003; |          |          |
-| no data       |          |          |          |          |          | &#10003; | &#10003; |
+For a particular line in an L1 cache, the events which cause
+state transitions are as follows.
+  1. (**Wr**) **Write**: a write to this line, issued by the local processor.
+  2. (**Re**) **Read**: a read of this line, issued by the local processor.
+  3. (**Ba**) **Barrier**: a read-modify-write of *any* line, issued by the local processor.
+  4. (**Co**) **Conflict**: a message from the directory indicating a write by some other processor.
+  5. (**Fo**) **Forward**: a message from the directory indicating a read by some other
+  processor. The cache has to respond to this message by sending the contents of the cache line.
+  6. (**Ev**) **Eviction**: an eviction of this line due to the local caching policy.
 
+### 3.2 Directory
 
-The inputs which are visible to the _i<sup>th</sup>_ L1 cache are
-  1. (**Wr**) Write, issued by processor _i_.
-  2. (**Re**) Read, issued by processor _i_.
-  3. (**Ba**) Barrier, issued by processor _i_.
-  4. (**Co**) Conflict, issued by the directory, indicating a write by some other processor _j_.
-  5. (**Fo**) Forward, issued by the directory, indicating a read by some other
-  processor _j_.
-  6. (**Ev**) Eviction, issued by the _i<sup>th</sup>_ cache itself.
+Each line in the directory can be in one of 4 states:
+  1. (**R<sub>p</sub>**) **Registered with _p_**: the only copy
+  of this line is in processor _p_'s local cache. Note that _0 ≤ p < P_. In this
+  state, the local storage reserved for this cache line is overwritten by the
+  identifier _p_.
+  2. (**S<sub>k</sub>**) **Shared amongst _k_**: there are _k_ copies of
+  this line in the local caches of _k_ distinct processors. Note that
+  _1 ≤ p ≤ P_. In this state, the local storage reserved for this cache line is
+  overwritten by the counter _k_.
+  3. (**V**) **Valid**: this is the only copy of this line in the system.
+  4. (**I**) **Invalid**: this line is not in the directory.
 
-These produce the following transitions. Transitions marked "&#9785;" are an error,
-"\-" are impossible, "\*" requires sending data to the directory, and "\*\*" requires both sending and receiving data from the directory. A
-transition of the form _X_/_Y_ may go to either _X_ or _Y_, as dictated by the
-directory.
+For a particular line in the directory, the events which cause state transitions
+are as follows. They are indexed by the processor id of the sender.
+  1. (**Wr<sub>i</sub>**) **Write**: processor _i_ wants to write to this line.
+  The directory has to respond to this message with either an accept or reject.
+  2. (**Ac<sub>i</sub>**) **Acquire**: processor _i_ wants to read from this line,
+  and is not currently a sharer of it. The directory has to respond to this
+  message with both the contents of the line, and either an accept or reject.
+  3. (**Sh<sub>i</sub>**) **Share**: processor _i_ wants to make its (dirty)
+  copy of this line visible to other processors. This message also contains the
+  contents of the line.
+  4. (**Fl<sub>i</sub>**) **Flush**: processor _i_ wants to push this line out
+  of its cache. This message also contains the contents of the line.
 
-|        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
-|:------:|:---:|:----:|:-------:|:-------:|:-------:|:-------:|:------:|
-| **Wr** |  D  |  D   |  W      |  W/L**  |  W/L**  |  L      |  D/L** |
-| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  C/S** |
-| **Ba** |  C  |  C   |  S*     |  O      |  I*     |  I      |  I     |
-| **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
-| **Fo** |  -  |  S*  |  -      |  -      |  -      |  -      |  -     |
-| **Ev** |  I* |  I*  |  I*     |  I*     |  I*     |  I      |  -     |
+### 3.3 Protocol
 
-Transitions for L1 cache _i_:
+The above states and transition events are coordinated in a message-passing
+style as follows.
+
+Transitions for L1 cache _i_. For transitions written _X_/_Y_, we transition to
+_X_ if the directory replies with an accept and _Y_ if it rejects. Cells marked
+\- are impossible, and those marked &#9785; are an error.
 
 |        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
 |------|---|----|-------|-------|-------|-------|------|
-| **Wr** |  D  |  D   |  W      |  Send **Ov<sub>i</sub>**; <br> W/L  |  Send **Ov<sub>i</sub>**; <br> W/L  |  L      |  Send **Wr<sub>i</sub>**; <br> W/L |
-| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  Send **Re<sub>i</sub>**; <br> C/S |
+| **Wr** |  D  |  D   |  W      |  Send **Wr<sub>i</sub>**; <br> W/L  |  Send **Wr<sub>i</sub>**; <br> W/L  |  L      |  Send **Wr<sub>i</sub>**; <br> W/L |
+| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  Send **Ac<sub>i</sub>**; <br> Receive data; <br> C/S |
 | **Ba** |  C  |  C   |  Send **Sh<sub>i</sub>**; <br> S     |  O      |  Send **Fl<sub>i</sub>**; <br> I     |  I      |  I     |
 | **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
 | **Fo** |  -  |  Send data; <br> S  |  -      |  -      |  -      |  -      |  -     |
 | **Ev** |  Send **Fl<sub>i</sub>**; <br> I |  Send **Fl<sub>i</sub>**; <br> I  |  Send **Fl<sub>i</sub>**; <br> I     |  Send **Fl<sub>i</sub>**; <br> I     |  Send **Fl<sub>i</sub>**; <br> I     |  I      |  -     |
 
-### 3.2 Directory
 
-Each line in the directory can be in one of 3 states:
-  1. (**R<sub>p</sub>**) Registered with _p_ (_0 ≤ p < P_)
-  2. (**S<sub>k</sub>**) Shared amongst _k_ processors (_0 ≤ k ≤ P_)
-  3. (**V**) Valid
-  4. (**I**) Invalid
-
-The inputs which are visible to the directory are the following, indexed by the processor id of the sender.
-  1. (**Ov<sub>i</sub>**) Overwrite (processor _i_ is a sharer)
-  2. (**Wr<sub>i</sub>**) Write (processor _i_ is not a sharer)
-  3. (**Re<sub>i</sub>**) Read
-  4. (**Sh<sub>i</sub>**) Share
-  4. (**Fl<sub>i</sub>**) Flush
-
-These produce the following transitions.
+Transitions for the directory:
 
 |                    | R<sub>p</sub> | S<sub>k</sub> | V | I |
 |--------------------|---------------|---------------|---|---|
-| **Ov<sub>i</sub>** | Send **Co** to _p_; <br> R<sub>p</sub> |
-| **Wr<sub>i</sub>** | Send **Co** to _p_; <br> R<sub>p</sub>
-| **Re<sub>i</sub>** | Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> S<sub>2</sub>
-| **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> S<sub>1</sub>
-| **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V
+| **Wr<sub>i</sub>** | Reject _i_; <br> Send **Co** to _p_; <br> R<sub>p</sub> | Accept _i_; <br> R<sub>i</sub> | Accept _i_; <br> R<sub>i</sub>
+| **Ac<sub>i</sub>** | Reject _i_; <br> Send **Fo** to _p_; <br> Receive data from _p_; <br> Forward data to _i_; <br> S<sub>2</sub> | **TODO: S<sub>k</sub> is broken** | Reject _i_; <br> Send data; <br> V
+| **Sh<sub>i</sub>** | Assert _i_ = _p_; <br> S<sub>1</sub> | &#9785; | &#9785;
+| **Fl<sub>i</sub>** | Assert _i_ = _p_; <br> Receive data from _p_; <br> V | Receive data; <br> if _k=1_ then V else S<sub>k-1</sub> | V
 
 ## References
 
@@ -242,3 +240,28 @@ ACM, 2012._
 <a name="shun-hash">3</a>: _Shun, Julian, and Guy E. Blelloch. "Phase-concurrent
 hash tables for determinism." Proceedings of the 26th ACM Symposium on
 Parallelism in Algorithms and Architectures. ACM, 2014._
+
+[](This stupid syntax is sort of like a comment. It works on GitHub, so...
+|               | D        | C        | W        | S        | O        | L        | I        |
+|---------------|----------|----------|----------|----------|----------|----------|----------|
+| dirty         | &#10003; |          | &#10003; |          |          |          |          |
+| clean         |          | &#10003; |          | &#10003; | &#10003; |          |          |
+| only copy     | &#10003; | &#10003; | &#10003; |          |          |          |          |
+| shared copy   |          |          |          | &#10003; | &#10003; |          |          |
+| no data       |          |          |          |          |          | &#10003; | &#10003; |
+)
+
+[](
+These produce the following transitions. Transitions marked "&#9785;" are an error,
+"\-" are impossible, "\*" requires sending data to the directory, and "\*\*" requires both sending and receiving data from the directory. A
+transition of the form _X_/_Y_ may go to either _X_ or _Y_, as dictated by the
+directory.
+|        |  D  |  C   |  W      |  S      |  O      |  L      |  I     |
+|:------:|:---:|:----:|:-------:|:-------:|:-------:|:-------:|:------:|
+| **Wr** |  D  |  D   |  W      |  W/L**  |  W/L**  |  L      |  D/L** |
+| **Re** |  D  |  C   | &#9785; |  S      |  S      | &#9785; |  C/S** |
+| **Ba** |  C  |  C   |  S*     |  O      |  I*     |  I      |  I     |
+| **Co** |  W  |  L   |  W      |  -      |  -      |  -      |  -     |
+| **Fo** |  -  |  S*  |  -      |  -      |  -      |  -      |  -     |
+| **Ev** |  I* |  I*  |  I*     |  I*     |  I*     |  I      |  -     |
+)
