@@ -156,22 +156,22 @@ a barrier which signals the end of a phase.
 Each line in an L1 cache can be in one of 7 states. We summarize them briefly
 here.
 
-  1. (**D**) **Exclusive Dirty**: this is the only copy of the line in the
+  1. (**D**) **Exclusive Dirty**: this is the only valid copy of the line in the
   system, and it is dirty. No other processors have tried to concurrently write
   to (or read from) this line.
-  2. (**C**) **Exclusive Clean**: this is the only copy of the line in the
+  2. (**C**) **Exclusive Clean**: this is the only valid copy of the line in the
   system, and it is clean. No other processors have tried to concurrently write
   to (or read from) this line.
-  3. (**W**) **Winner**: this is the only copy of the line in the system, and it
+  3. (**W**) **Winner**: this is the only valid copy of the line in the system, and it
   is dirty. At least one other processor has tried to concurrently write to this
   line.
-  4. (**S**) **Shared**: this is one of (possibly) many copies of the line in
-  the system, all of which are clean.
+  4. (**S**) **Shared**: this is one of (possibly) many valid copies of the line in
+  the system.
   5. (**O**) **Old**: this is one of (possibly) many copies of the line in the
-  system, all of which are clean. At the next barrier, this line needs to be
-  self-invalidated.
-  6. (**L**) **Loser**: this line is held in the cache but the data is invalid,
-  due to some other processor having concurrently written to this line.
+  system, but it may be invalid. Unless the data is refreshed by a read, this
+  line needs to be self-invalidated at the next synchronization.
+  6. (**L**) **Loser**: this line is invalid due to some other processor having
+  concurrently written to this line.
   7. (**I**) **Invalid**: this line is not in the cache.
 
 For a particular line in an L1 cache, the events which cause
@@ -183,28 +183,29 @@ state transitions are as follows.
   4. (**Co**) **Conflict**: a message from the directory indicating a write to
   this line by some other processor.
   5. (**Fo**) **Forward**: a message from the directory indicating a read of
-  this line by some other processor. The cache has to respond to this message by
-  sending the contents of the cache line.
+  this line by some other processor. The cache has to respond to this directory by
+  sending the contents of the line.
   6. (**Ev**) **Eviction**: an eviction of this line due to the local caching
   policy.
 
 ### 3.2 Directory
 
-Each line in the directory can be in one of 5 states:
-  1. (**D<sub>p</sub>**) **Registered _p_ as dirty**: the only copy
-  of this line is in processor _p_'s local cache, where _0 ≤ p < P_. In this
-  state, the local storage reserved for this cache line is overwritten by the
+Each line in the directory can be in one of 5 states. The basic idea is to
+keep track of the status of the owner if possible.
+  1. (**D<sub>p</sub>**) **Registered _p_ as dirty**: the only valid copy of this line
+  is in state **D** and is stored in processor _p_'s local cache (_0 ≤ p < P_).
+  The local storage reserved for this cache line is overwritten by the
   identifier _p_.
-  2. (**C<sub>p</sub>**) **Registered _p_ as clean**: the only copy
-  of this line is in processor _p_'s local cache, where _0 ≤ p < P_. In this
-  state, the local storage reserved for this cache line is overwritten by the
+  2. (**C<sub>p</sub>**) **Registered _p_ as clean**: the only valid copy of this line
+  is in state **C** and is stored in processor _p_'s local cache (_0 ≤ p < P_).
+  The local storage reserved for this cache line is overwritten by the
   identifier _p_.
-  3. (**W<sub>p</sub>**) **Registered _p_ as winner**: the only copy
-  of this line is in processor _p_'s local cache, where _0 ≤ p < P_. In this
-  state, the local storage reserved for this cache line is overwritten by the
+  3. (**W<sub>p</sub>**) **Registered _p_ as winner**: the only valid copy of this line
+  is in state **W** and is stored in processor _p_'s local cache (_0 ≤ p < P_).
+  The local storage reserved for this cache line is overwritten by the
   identifier _p_.
-  4. (**V**) **Valid**: this is one of (possibly) many copies of the line in
-  the system, all of which are identical.
+  4. (**V**) **Valid**: this is one of (possibly) many valid copies of the line in
+  the system.
   5. (**I**) **Invalid**: this line is not in the directory.
 
 For a particular line in the directory, the events which cause state transitions
@@ -213,14 +214,14 @@ are as follows. They are indexed by the processor identifier of the sender.
   The directory may have to respond to this message with either an accept or reject.
   2. (**Ac<sub>i</sub>**) **Acquire**: processor _i_ wants to read from this line,
   and is not currently a sharer of it. The directory has to respond to this
-  message with both the contents of the line, and either an accept or reject.
+  message with an accept or reject as well as the contents of the line.
   3. (**Cl<sub>i</sub>**) **Clean**: processor _i_ is downgrading its status
   from **D** to **C**.
   3. (**Sh<sub>i</sub>**) **Share**: processor _i_ wants to make its (dirty)
   copy of this line visible to other processors by downgrading its status from
-  **W** to **O**. This message also contains the contents of the line.
+  **W** to **O**. The processor also has to send the contents of the line.
   4. (**Fl<sub>i</sub>**) **Flush**: processor _i_ wants to push this line out
-  of its cache. This message also contains the contents of the line.
+  of its cache. The processor also has to send the contents of the line.
 
 ### 3.3 Protocol
 
@@ -234,12 +235,12 @@ _X_ if the directory replies with an accept and _Y_ if it rejects.
 
 | | D | C | W | S | O | L | I |
 | - | - | - | - | - | - | - | - |
-| **Wr** | D | Send **Wr<sub>i</sub>**; <br> D | W | &#9785; | Send **Wr<sub>i</sub>**; <br> D/L | L | Send **Wr<sub>i</sub>**; <br> D/L |
-| **Re** | D | C | &#9785; | S | S | &#9785; | Send **Ac<sub>i</sub>**; <br> Receive data; <br> C/S |
-| **Ba** | Send **Cl<sub>i</sub>**; <br> C | C |  Send **Sh<sub>i</sub>**; <br> O     | O | I | I | I |
+| **Wr** | D | Send **Wr<sub>i</sub>**; <br> D | W | &#9785; | Send **Wr<sub>i</sub>**;<br> D/L | L | Send **Wr<sub>i</sub>**;<br> D/L |
+| **Re** | D | C | &#9785; | S | S | &#9785; | Send **Ac<sub>i</sub>**;<br> Receive data; <br> C/S |
+| **Ba** | Send **Cl<sub>i</sub>**; <br> C | C | Send **Sh<sub>i</sub>**;<br> Send data;<br> O | O | I | I | I |
 | **Co** | W | L | - | - | - | - | - |
 | **Fo** | - | Send data; <br> S | - | - | - | - | - |
-| **Ev** | Send **Fl<sub>i</sub>**; <br> I | Send **Fl<sub>i</sub>**; <br> I | Send **Fl<sub>i</sub>**; <br> I | I | I | I | - |
+| **Ev** | Send **Fl<sub>i</sub>**;<br> Send data;<br> I | Send **Fl<sub>i</sub>**;<br> Send data;<br> I | Send **Fl<sub>i</sub>**;<br> Send data;<br> I | I | I | I | - |
 
 
 Transitions for the directory:
@@ -250,7 +251,7 @@ Transitions for the directory:
 | **Ac<sub>i</sub>** | &#9785; | Send **Fo** to _p_;<br> Receive data from _p_;<br> Reject _i_;<br> Send data to _i_;<br> V | &#9785; | Reject _i_;<br> Send data to _i_;<br> V | Retrieve data;<br> Accept _i_;<br> Send data to _i_;<br> V
 | **Cl<sub>i</sub>** | Assert _i = p_;<br> C<sub>p</sub> | - | - | - | - |
 | **Sh<sub>i</sub>** | - | - | Assert _i = p_;<br> Receive data from _p_;<br> V | - | - |
-| **Fl<sub>i</sub>** | Assert _i = p_;<br> Receive data;<br> V | Assert _i = p_;<br> Receive data;<br> V | Assert _i = p_;<br> Receive data;<br> V | - | - |
+| **Fl<sub>i</sub>** | Assert _i = p_;<br> Receive data from _p_;<br> V | Assert _i = p_;<br> Receive data from _p_;<br> V | Assert _i = p_;<br> Receive data from _p_;<br> V | - | - |
 
 ## References
 
