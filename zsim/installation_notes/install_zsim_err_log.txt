@@ -1,0 +1,102 @@
+gcc: error: /usr/include/asm/unistd.h: No such file or directory
+gcc: fatal error: no input files
+compilation terminated.
+Traceback (most recent call last):
+  File "../../misc/list_syscalls.py", line 7, in <module>
+    denseList = ["INVALID"]*(max([num for (num, name) in sysList]) + 1)
+ValueError: max() arg is an empty sequence
+build/opt/access_tracing.cpp:28:18: fatal error: hdf5.h: No such file or directory
+compilation terminated.
+build/opt/access_tracing.cpp:28:18: fatal error: hdf5.h: No such file or directory
+compilation terminated.
+build/opt/config.cpp:32:25: fatal error: libconfig.h++: No such file or directory
+compilation terminated.
+build/opt/config.cpp:32:25: fatal error: libconfig.h++: No such file or directory
+compilation terminated.
+build/opt/config.cpp:32:25: fatal error: libconfig.h++: No such file or directory
+compilation terminated.
+build/opt/debug_zsim.cpp:28:18: fatal error: gelf.h: No such file or directory
+compilation terminated.
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:41:0,
+                 from build/opt/decoder.h:31,
+                 from build/opt/decoder.cpp:26:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:101:2: error: #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+ #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+  ^
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:116:2: error: #error This kit requires gcc 3.4 or later
+ #error This kit requires gcc 3.4 or later
+  ^
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/level_base.PLH:93:0,
+                 from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:43,
+                 from build/opt/decoder.h:31,
+                 from build/opt/decoder.cpp:26:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/foundation.PLH:52:26: fatal error: types_marker.h: No such file or directory
+compilation terminated.
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:41:0,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/ooo_core.h:32,
+                 from build/opt/contention_sim.cpp:35:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:101:2: error: #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+ #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+  ^
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:116:2: error: #error This kit requires gcc 3.4 or later
+ #error This kit requires gcc 3.4 or later
+  ^
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/level_base.PLH:93:0,
+                 from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:43,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/ooo_core.h:32,
+                 from build/opt/contention_sim.cpp:35:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/foundation.PLH:52:26: fatal error: types_marker.h: No such file or directory
+compilation terminated.
+scons: *** [build/opt/access_tracing.os] Error 1
+scons: *** [build/opt/access_tracing.ot] Error 1
+scons: *** [build/opt/config.o] Error 1
+scons: *** [build/opt/config.os] Error 1
+scons: *** [build/opt/config.ot] Error 1
+scons: *** [build/opt/debug_zsim.os] Error 1
+scons: *** [build/opt/decoder.os] Error 1
+scons: *** [build/opt/contention_sim.os] Error 1
+build/opt/hdf5_stats.cpp:27:18: fatal error: hdf5.h: No such file or directory
+compilation terminated.
+scons: *** [build/opt/hdf5_stats.os] Error 1
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:41:0,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/ooo_core.h:32,
+                 from build/opt/ooo_core.cpp:26:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:101:2: error: #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+ #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+  ^
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:116:2: error: #error This kit requires gcc 3.4 or later
+ #error This kit requires gcc 3.4 or later
+  ^
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/level_base.PLH:93:0,
+                 from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:43,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/ooo_core.h:32,
+                 from build/opt/ooo_core.cpp:26:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/foundation.PLH:52:26: fatal error: types_marker.h: No such file or directory
+compilation terminated.
+scons: *** [build/opt/ooo_core.os] Error 1
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:41:0,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/init.cpp:39:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:101:2: error: #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+ #error The C++ ABI of your compiler does not match the ABI of the pin kit.
+  ^
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/compiler_version_check2.H:116:2: error: #error This kit requires gcc 3.4 or later
+ #error This kit requires gcc 3.4 or later
+  ^
+In file included from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/level_base.PLH:93:0,
+                 from /usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/pin.H:43,
+                 from build/opt/decoder.h:31,
+                 from build/opt/core.h:30,
+                 from build/opt/init.cpp:39:
+/usr0/home/cmcguffe/pin-3.2-81205-gcc-linux/source/include/pin/foundation.PLH:52:26: fatal error: types_marker.h: No such file or directory
+compilation terminated.
+scons: *** [build/opt/init.os] Error 1

@@ -1,0 +1,191 @@
+set ns [new Simulator]
+source tb_compat.tcl
+
+#node1
+set node1 [$ns node]
+node1 add-desire rr 1.0
+tb-set-node-os node1 UBUNTO14-64-PROBE
+tb-set-node-startcmd node1 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/471.omnetpp/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node2
+set node2 [$ns node]
+node2 add-desire rr 1.0
+tb-set-node-os node2 UBUNTO14-64-PROBE
+tb-set-node-startcmd node2 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/462.libquantum/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node3
+set node3 [$ns node]
+node3 add-desire rr 1.0
+tb-set-node-os node3 UBUNTO14-64-PROBE
+tb-set-node-startcmd node3 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/410.bwaves/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node4
+set node4 [$ns node]
+node4 add-desire rr 1.0
+tb-set-node-os node4 UBUNTO14-64-PROBE
+tb-set-node-startcmd node4 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/433.milc/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node5
+set node5 [$ns node]
+node5 add-desire rr 1.0
+tb-set-node-os node5 UBUNTO14-64-PROBE
+tb-set-node-startcmd node5 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/459.GemsFDTD/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node6
+set node6 [$ns node]
+node6 add-desire rr 1.0
+tb-set-node-os node6 UBUNTO14-64-PROBE
+tb-set-node-startcmd node6 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/429.mcf/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node7
+set node7 [$ns node]
+node7 add-desire rr 1.0
+tb-set-node-os node7 UBUNTO14-64-PROBE
+tb-set-node-startcmd node7 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/435.gromacs/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node8
+set node8 [$ns node]
+node8 add-desire rr 1.0
+tb-set-node-os node8 UBUNTO14-64-PROBE
+tb-set-node-startcmd node8 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/454.calculix/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node9
+set node9 [$ns node]
+node9 add-desire rr 1.0
+tb-set-node-os node9 UBUNTO14-64-PROBE
+tb-set-node-startcmd node9 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/444.namd/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node10
+set node10 [$ns node]
+node10 add-desire rr 1.0
+tb-set-node-os node10 UBUNTO14-64-PROBE
+tb-set-node-startcmd node10 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/434.zeusmp/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node11
+set node11 [$ns node]
+node11 add-desire rr 1.0
+tb-set-node-os node11 UBUNTO14-64-PROBE
+tb-set-node-startcmd node11 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/447.dealII/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node12
+set node12 [$ns node]
+node12 add-desire rr 1.0
+tb-set-node-os node12 UBUNTO14-64-PROBE
+tb-set-node-startcmd node12 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/400.perlbench/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node13
+set node13 [$ns node]
+node13 add-desire rr 1.0
+tb-set-node-os node13 UBUNTO14-64-PROBE
+tb-set-node-startcmd node13 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/416.gamess/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node14
+set node14 [$ns node]
+node14 add-desire rr 1.0
+tb-set-node-os node14 UBUNTO14-64-PROBE
+tb-set-node-startcmd node14 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/482.sphinx3/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node15
+set node15 [$ns node]
+node15 add-desire rr 1.0
+tb-set-node-os node15 UBUNTO14-64-PROBE
+tb-set-node-startcmd node15 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/458.sjeng/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node16
+set node16 [$ns node]
+node16 add-desire rr 1.0
+tb-set-node-os node16 UBUNTO14-64-PROBE
+tb-set-node-startcmd node16 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/403.gcc/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node17
+set node17 [$ns node]
+node17 add-desire rr 1.0
+tb-set-node-os node17 UBUNTO14-64-PROBE
+tb-set-node-startcmd node17 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/453.povray/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node18
+set node18 [$ns node]
+node18 add-desire rr 1.0
+tb-set-node-os node18 UBUNTO14-64-PROBE
+tb-set-node-startcmd node18 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/483.xalancbmk/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node19
+set node19 [$ns node]
+node19 add-desire rr 1.0
+tb-set-node-os node19 UBUNTO14-64-PROBE
+tb-set-node-startcmd node19 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/999.specrand/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node20
+set node20 [$ns node]
+node20 add-desire rr 1.0
+tb-set-node-os node20 UBUNTO14-64-PROBE
+tb-set-node-startcmd node20 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/436.cactusADM/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node21
+set node21 [$ns node]
+node21 add-desire rr 1.0
+tb-set-node-os node21 UBUNTO14-64-PROBE
+tb-set-node-startcmd node21 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/998.specrand/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node22
+set node22 [$ns node]
+node22 add-desire rr 1.0
+tb-set-node-os node22 UBUNTO14-64-PROBE
+tb-set-node-startcmd node22 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/481.wrf/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node23
+set node23 [$ns node]
+node23 add-desire rr 1.0
+tb-set-node-os node23 UBUNTO14-64-PROBE
+tb-set-node-startcmd node23 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/450.soplex/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node24
+set node24 [$ns node]
+node24 add-desire rr 1.0
+tb-set-node-os node24 UBUNTO14-64-PROBE
+tb-set-node-startcmd node24 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/437.leslie3d/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node25
+set node25 [$ns node]
+node25 add-desire rr 1.0
+tb-set-node-os node25 UBUNTO14-64-PROBE
+tb-set-node-startcmd node25 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/401.bzip2/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node26
+set node26 [$ns node]
+node26 add-desire rr 1.0
+tb-set-node-os node26 UBUNTO14-64-PROBE
+tb-set-node-startcmd node26 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/465.tonto/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node27
+set node27 [$ns node]
+node27 add-desire rr 1.0
+tb-set-node-os node27 UBUNTO14-64-PROBE
+tb-set-node-startcmd node27 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/464.h264ref/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node28
+set node28 [$ns node]
+node28 add-desire rr 1.0
+tb-set-node-os node28 UBUNTO14-64-PROBE
+tb-set-node-startcmd node28 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/470.lbm/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node29
+set node29 [$ns node]
+node29 add-desire rr 1.0
+tb-set-node-os node29 UBUNTO14-64-PROBE
+tb-set-node-startcmd node29 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/473.astar/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node30
+set node30 [$ns node]
+node30 add-desire rr 1.0
+tb-set-node-os node30 UBUNTO14-64-PROBE
+tb-set-node-startcmd node30 /usr2/cmcguffe/test_experiment/first_system_symmetric/l2repl_LRU/l3repl_LRU/1procs/445.gobmk/2017-03-26_22-25-30.496056/execute_experiment.sh
+
+#node31
+set node31 [$ns node]
+node31 add-desire rr 1.0
+tb-set-node-os node31 UBUNTO14-64-PROBE
+tb-set-node-startcmd node31 execute_experiment.sh
+
+$ns rtproto Static
+$ns run

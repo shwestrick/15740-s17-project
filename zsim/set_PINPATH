@@ -1,0 +1,5 @@
+#you need to run source ./setPIN_ROOT
+
+#!/bin/bash
+export PINPATH=/usr2/cmcguffe/pin-2.14-71313-gcc.4.4.7-linux
+echo $PINPATH
