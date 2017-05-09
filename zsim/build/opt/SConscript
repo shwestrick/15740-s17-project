@@ -37,7 +37,7 @@ libEnv.SharedLibrary("zsim.so", libSrcs)
 traceEnv = env.Clone()
 traceEnv["LIBS"] += ["hdf5", "hdf5_hl"]
 traceEnv["OBJSUFFIX"] += "t"
-traceEnv.Program("dumptrace", ["dumptrace.cpp", "access_tracing.cpp", "memory_hierarchy.cpp"] + commonSrcs)
+traceEnv.Program("dumptrace", ["dumptrace.cpp", "access_tracing.cpp", "phase_concurrent_memory_hierarchy.cpp"] + commonSrcs)
 traceEnv.Program("sorttrace", ["sorttrace.cpp", "access_tracing.cpp"] + commonSrcs)
 
 # Build harness (static to make it easier to run across environments)
