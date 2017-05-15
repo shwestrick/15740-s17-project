@@ -266,7 +266,7 @@ Transitions for the directory:
 \hline
  & \textbf{D\textsubscript{p}} & \textbf{C\textsubscript{p}} & \textbf{W\textsubscript{p}} & \textbf{V} & \textbf{I} \\ \hline
 \textbf{Wr\textsubscript{i}} & \makecell{Assert $i \neq p$; \\ Reject $i$; \\ Send Co to $p$; \\ W\textsubscript{p}} & \makecell{if $i = p$ then D\textsubscript{p}; \\ else: \{ Accept $i$; \\ Send Co to $p$; \\ W\textsubscript{i}\}} & \makecell{Assert $i \neq p$; \\ Reject $i$; \\ W\textsubscript{p}} & \makecell{Accept $i$; \\ D\textsubscript{i}} & \makecell{Accept $i$; \\ D\textsubscript{i}} \\ \hline
-\textbf{Ac\textsubscript{i}} & \frownie & \makecell{Send Fo to $p$; \\ Receive data from $p$; \\ Reject $i$; \\ Send data to $i$; \\ V} & \frownie & \makecell{Reject $i$; \\ Send data to $i$; \\ V} & \makecell{Retrieve data; \\ Accept $i$; \\ Send data to $i$; \\ V} \\ \hline
+\textbf{Ac\textsubscript{i}} & \frownie & \makecell{Send Fo to $p$; \\ Receive data from $p$; \\ Reject $i$; \\ Send data to $i$; \\ V} & \frownie & \makecell{Reject $i$; \\ Send data to $i$; \\ V} & \makecell{Retrieve data; \\ Accept $i$; \\ Send data to $i$; \\ C\textsubscript{i}} \\ \hline
 \textbf{Cl\textsubscript{i}} & \makecell{Assert $i = p$; \\ C\textsubscript{p}} & - & - & - & - \\ \hline
 \textbf{Sh\textsubscript{i}} & - & - & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & - & - \\ \hline
 \textbf{Fl\textsubscript{i}} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & - & - \\ \hline
