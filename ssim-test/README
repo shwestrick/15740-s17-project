@@ -1,0 +1,6 @@
+This directory contains sample programs which are phase-concurrent, modulo C
+library implementations (which might be implemented in a non phase-concurrent
+manner). Due to the lack of a phase-concurrent scheduler, all programs are
+either statically scheduled or scheduled via a custom scheduler.
+
+These programs interface with the ssim simulator, provided by ssim/pccc.hpp
