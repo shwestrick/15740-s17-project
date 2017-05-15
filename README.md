@@ -248,7 +248,7 @@ Transitions for the directory:
 | | D<sub>p</sub> | C<sub>p</sub> | W<sub>p</sub> | V | I |
 | - | - | - | - | - | - |
 | **Wr<sub>i</sub>** | Assert _i ≠ p_;<br> Reject _i_;<br> Send **Co** to _p_;<br> W<sub>p</sub> | if _i = p_ then D<sub>p</sub><br> else <br>&nbsp;&nbsp; Accept _i_;<br>&nbsp;&nbsp; Send **Co** to _p_;<br>&nbsp;&nbsp; W<sub>i</sub> | Assert _i ≠ p_;<br> Reject _i_;<br> W<sub>p</sub> | Accept _i_;<br> D<sub>i</sub> | Accept _i_;<br> D<sub>i</sub>
-| **Ac<sub>i</sub>** | &#9785; | Send **Fo** to _p_;<br> Receive data from _p_;<br> Reject _i_;<br> Send data to _i_;<br> V | &#9785; | Reject _i_;<br> Send data to _i_;<br> V | Retrieve data;<br> Accept _i_;<br> Send data to _i_;<br> V
+| **Ac<sub>i</sub>** | &#9785; | Send **Fo** to _p_;<br> Receive data from _p_;<br> Reject _i_;<br> Send data to _i_;<br> V | &#9785; | Reject _i_;<br> Send data to _i_;<br> V | Retrieve data;<br> Accept _i_;<br> Send data to _i_;<br> C<sub>i</sub>
 | **Cl<sub>i</sub>** | Assert _i = p_;<br> C<sub>p</sub> | - | - | - | - |
 | **Sh<sub>i</sub>** | - | - | Assert _i = p_;<br> Receive data from _p_;<br> V | - | - |
 | **Fl<sub>i</sub>** | Assert _i = p_;<br> Receive data from _p_;<br> V | Assert _i = p_;<br> Receive data from _p_;<br> V | Assert _i = p_;<br> Receive data from _p_;<br> V | - | - |
