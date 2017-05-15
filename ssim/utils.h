@@ -5,6 +5,19 @@
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
+#define assert_msg(cond, args...) \
+{ \
+  if (!(cond)) { \
+    pthread_mutex_lock(&print_lock); \
+    fprintf(stderr, "ASSERT_MSG: "); \
+    fprintf(stderr, args); \
+    fprintf(stderr, "\n"); \
+    fflush(stderr); \
+    assert(cond); \
+    pthread_mutex_unlock(&print_lock); \
+  } \
+}
+
 #define panic(args...) \
 { \
   pthread_mutex_lock(&print_lock); \
