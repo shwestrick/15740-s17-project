@@ -249,7 +249,7 @@ Transitions for L1 cache $i$. All messages are sent to (and received from) the d
 \hline
  & \textbf{D} & \textbf{C} & \textbf{W} & \textbf{S} & \textbf{O} & \textbf{L} & \textbf{I} \\ \hline
 \textbf{Wr} & D & \makecell{Send Wr\textsubscript{i};\\ D} & W & D & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L} \\ \hline
-\textbf{Re} & D & C & \frownie & S & S & \frownie & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
+\textbf{Re} & D & C & \frownie & S & S & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
 \textbf{Ba} & \makecell{Send Cl\_i;\\ C} & C & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O & I & I & I \\ \hline
 \textbf{Co} & W & L & - & - & - & - & - \\ \hline
 \textbf{Fo} & - & \makecell{Send data;\\ S} & - & - & - & - & - \\ \hline
