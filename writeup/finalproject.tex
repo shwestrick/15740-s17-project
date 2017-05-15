@@ -7,8 +7,13 @@
 \author{Anson Kahng, Charles McGuffey, and Sam Westrick}
 \date{May 2017}
 
-\usepackage{color}
-\usepackage{fixltx2e}  % for subscripts
+\usepackage{color} % for todos
+\usepackage{fixltx2e} % for subscripts
+\usepackage{wasysym} % for frownies
+\usepackage{float} % for table position
+\usepackage{parskip} % for indentation
+\usepackage{graphicx}
+
 
 % table line break packages
 \usepackage{array}
@@ -22,36 +27,36 @@
 \usepackage{biblatex}
 \usepackage{listings}
 \lstset{
-  basicstyle=\ttfamily,
-  mathescape
+ basicstyle=\ttfamily,
+ mathescape
 }
 
 \usepackage{filecontents}
 
 \begin{filecontents*}{general.bib}
 @inproceedings{choi2010denovo,
-  title={Denovo: Rethinking hardware for disciplined parallelism},
-  author={Choi, Byn and Komuravelli, Rakesh and Sung, Hyojin and Bocchino, Robert and Adve, Sarita and Adve, Vikram},
-  booktitle={Proceedings of the Second USENIX Workshop on Hot Topics in Parallelism (HotPar)},
-  year={2010}
+ title={Denovo: Rethinking hardware for disciplined parallelism},
+ author={Choi, Byn and Komuravelli, Rakesh and Sung, Hyojin and Bocchino, Robert and Adve, Sarita and Adve, Vikram},
+ booktitle={Proceedings of the Second USENIX Workshop on Hot Topics in Parallelism (HotPar)},
+ year={2010}
 }
 
 @inproceedings{ros2012complexity,
-  title={Complexity-effective multicore coherence},
-  author={Ros, Alberto and Kaxiras, Stefanos},
-  booktitle={Proceedings of the 21st international conference on Parallel architectures and compilation techniques},
-  pages={241--252},
-  year={2012},
-  organization={ACM}
+ title={Complexity-effective multicore coherence},
+ author={Ros, Alberto and Kaxiras, Stefanos},
+ booktitle={Proceedings of the 21st international conference on Parallel architectures and compilation techniques},
+ pages={241--252},
+ year={2012},
+ organization={ACM}
 }
 
 @inproceedings{shun2014phase,
-  title={Phase-concurrent hash tables for determinism},
-  author={Shun, Julian and Blelloch, Guy E},
-  booktitle={Proceedings of the 26th ACM Symposium on Parallelism in Algorithms and Architectures},
-  pages={96--107},
-  year={2014},
-  organization={ACM}
+ title={Phase-concurrent hash tables for determinism},
+ author={Shun, Julian and Blelloch, Guy E},
+ booktitle={Proceedings of the 26th ACM Symposium on Parallelism in Algorithms and Architectures},
+ pages={96--107},
+ year={2014},
+ organization={ACM}
 }
 
 \end{filecontents*}
@@ -72,14 +77,14 @@ However, while DRF programs are common, there are some programs which benefit fr
 
 \begin{lstlisting}
 function primes(n) {
-  if n < 2 then return {};
-  let isPrime = [true : 0 $\leq$ i < n];
-  foreach p in primes($\sqrt{n}$) {
-    foreach k where 2 $\leq$ k < $\lceil n/p \rceil$ {
-      isPrime[p $\cdot$ k] := false;
-    }
-  }
-  return {$i$ : 2 $\leq$ i < n | isPrime[i]};
+ if n < 2 then return {};
+ let isPrime = [true : 0 $\leq$ i < n];
+ foreach p in primes($\sqrt{n}$) {
+ foreach k where 2 $\leq$ k < $\lceil n/p \rceil$ {
+ isPrime[p $\cdot$ k] := false;
+ }
+ }
+ return {$i$ : 2 $\leq$ i < n | isPrime[i]};
 }
 \end{lstlisting}
 
@@ -101,15 +106,15 @@ Under this definition, phase-concurrent programs must rely on read-modify-write 
 
 \begin{lstlisting}
 function sum_array(a) {
-  // initially s == 2
-  r[p] := 0;
-  for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
-  	r[p] := r[p] + a[i];
-  }
-  if (sub-and-fetch(s,1) == 0) {
-  	// exactly one process will execute this
-  	printf("%d\n", r[0] + r[1]);
-  }
+ // initially s == 2
+ r[p] := 0;
+ for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
+ 	r[p] := r[p] + a[i];
+ }
+ if (sub-and-fetch(s,1) == 0) {
+ 	// exactly one process will execute this
+ 	printf("%d\n", r[0] + r[1]);
+ }
 }
 \end{lstlisting}
 
@@ -127,19 +132,61 @@ For example, we can modify the array-sum example to print not only the sum of th
 \begin{lstlisting}
 r[p] := 0;
 for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
-  r[p] := r[p] + a[i];
+ r[p] := r[p] + a[i];
 }
 w := 42; // this value will never be visible
 w := p;
 if (sub-and-fetch(s,1) == 0) {
-  printf("sum: %d\n", r[0] + r[1]);
-  printf("winner: %d\n", w);
+ printf("sum: %d\n", r[0] + r[1]);
+ printf("winner: %d\n", w);
 }
 \end{lstlisting}
 
+% to add: initial cache coherence policy and transition diagram, plus explanations of the optimizations
 
-\section{Cache Coherence}
-One of the primary challenges in developing a cache coherence protocol for phase-concurrent programs is managing winners and losers at writes. Some existing techniques can be recycled here. For example, in DeNovo, Choi et al. proposed reusing the shared LLC as a directory, allowing them to track the ``owner" of a modified cache line with no asymptotic space overhead \cite{choi2010denovo}. We will utilize a similar trick. \textbf{From now on, we will refer to the shared LLC and the directory interchangeably.} Note that this approach requires inclusive caching: every line in an L1 cache must also be in the shared LLC.
+\section{WSI Cache Coherence}
+Our first approach at phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: Winner, Shared, and Invalid.
+
+Intuitively, WSI ensures that data can only be in the Shared state during a read phase; during a write phase, data can be in either Winner or Invalid, depending on whether or not the corresponding processor won the write-write race. 
+
+\begin{table}[H]
+\centering
+\caption{WSI cache transitions}
+\label{wsi-cache-protocol}
+\begin{tabular}{|c|c|c|c|}
+\hline
+ & \textbf{W} & \textbf{S} & \textbf{I} \\ \hline
+\textbf{Wr} & W & W/I & W/I \\ \hline
+\textbf{Re} & S & S & S \\ \hline
+\textbf{Ba} & I & I & I \\ \hline
+\textbf{Co} & W & - & - \\ \hline
+\textbf{Fo} & - & S & - \\ \hline
+\textbf{Ev} & I & I & I \\ \hline
+\end{tabular}
+\end{table}
+
+However, WSI suffers from many performance issues because it does not take advantage of privacy, track ``losers'' in each write phase, and sometimes invalidates data too early to be of use; each of these issues is addressed below.
+
+\textbf{Private data ($W \rightarrow D, C, W$)}:
+In this protocol, we must always conservatively ``reset'' (i.e., transition to Invalid) at all barriers. However, if a processor has exclusive access to a memory location, then interacting with the directory and transitioning into Shared or Invalid are inefficient, the intuition being that if no other processor is trying to access the data, there is no need for communication overhead or unnecessary transitions to states that implicitly assume that more than one processor has access to the data. In order to deal with exclusive data, we created two new states, $D$ and $C$, corresponding to Exclusive Dirty and Exclusive Clean, respectively, in which processors have private ownership of the data.
+
+\textbf{Losers ($I \rightarrow L, I$)}: 
+By the semantics of phase concurrency, if a processor has lost a write-write race in a write phase, then none of its writes can ever be accepted as valid in this phase. However, because the failed writer will be in Invalid, it has to query the directory upon each attempted write to determine whether or not it won the race. This is clearly quite inefficient and led us to create a new state, \textbf{Loser}, from whence all write attempts fail immediately without communication with the directory.
+
+\textbf{Back-to-back read phases ($S \rightarrow S, O$)}:
+Because WSI conservatively transitions to Invalid at every barrier, whether the barrier actually represents a phase transition for each cache line, there is potentially additional inefficiency when a barrier interrupts a continuous read phase, whereupon transitioning into Invalid is unnecessary. Therefore, one optimization is the creation of an Old phase, which itself downgrades to Invalid on a barrier, but can get ``renewed'' to Shared if the data is, indeed, read after a barrier.
+
+Together, these optimizations transformed our original WSI protocol to DCWSOLI, where each old state in WSI is ``expanded'' into others as shown in Figure \ref{wsi-to-dcwsoli}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{img/posterfig2.png}
+\caption{Basic cache coherence protocol and optimizations}
+\label{wsi-to-dcwsoli}
+\end{figure}
+
+\section{DCWSOLI Cache Coherence}
+One of the primary challenges in developing a cache coherence protocol for phase-concurrent programs is managing winners and losers at writes. Some existing techniques can be recycled here. For example, in DeNovo, Choi et al. proposed reusing the shared LLC as a directory, allowing them to track the ``owner" of a modified cache line with no asymptotic space overhead \cite{choi2010denovo}. We will utilize a similar trick. \textbf{From now on, we will refer to the \textit{shared LLC} and the \textit{directory} interchangeably.} Note that this approach requires inclusive caching: every line in an L1 cache must also be in the shared LLC.
 
 At the end of a write phase, we need to commit the winning write back to the directory so that it is visible to other processes. Although we could rely on programmer-directed cache self-invalidations, we would rather not do so. Instead, we will conservatively guess that each synchronization instruction is a barrier which signals the end of a phase.
 
@@ -171,9 +218,9 @@ For a particular line in an L1 cache, the events which cause state transitions a
 Each line in the directory can be in one of 5 states. The basic idea is to keep track of the status of the owner if possible.
 
 \begin{enumerate}
-\item \textbf{(Dp) Registered $p$ as dirty}: the only valid copy of this line is in state \textbf{D} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
-\item \textbf{(Cp) Registered $p$ as clean}: the only valid copy of this line is in state \textbf{C} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
-\item \textbf{(Wp) Registered $p$ as winner}: the only valid copy of this line is in state \textbf{W} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
+\item \textbf{(D\textsubscript{p}) Registered $p$ as dirty}: the only valid copy of this line is in state \textbf{D} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
+\item \textbf{(C\textsubscript{p}) Registered $p$ as clean}: the only valid copy of this line is in state \textbf{C} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
+\item \textbf{(W\textsubscript{p}) Registered $p$ as winner}: the only valid copy of this line is in state \textbf{W} and is stored in processor $p$'s local cache ($0 \leq p < P$). The local storage reserved for this cache line is overwritten by the identifier $p$.
 \item \textbf{(V) Valid}: this is one of (possibly) many valid copies of the line in the system.
 \item \textbf{(I) Invalid}: this line is not in the directory.
 \end{enumerate}
@@ -189,37 +236,37 @@ For a particular line in the directory, the events which cause state transitions
 \end{enumerate}
 
 \subsection{Cache Coherence Protocol}
-The above states and transition events are coordinated in a message-passing style as follows. Transitions marked - are impossible, and those marked X violate phase-concurrency.
+The above states and transition events are coordinated in a message-passing style as follows. Transitions marked - are impossible, and those marked ~\frownie~ violate phase-concurrency.
 
 Transitions for L1 cache $i$. All messages are sent to (and received from) the directory only. For transitions written $A/B$, we transition to $A$ if the directory replies with an accept and $B$ if it rejects.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \caption{Cache transitions}
 \label{cache-protocol}
 \begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline
-   & \textbf{D}                        & \textbf{C}                        & \textbf{W}                        & \textbf{S}  & \textbf{O}               & \textbf{L}  & \textbf{I}                             \\ \hline
-\textbf{Wr} & D                        & \makecell{Send Wr\textsubscript{i};\\ D}            & W                        & XX & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L}               \\ \hline
-\textbf{Re} & D                        & C                        & XX                       & S  & S               & XX & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
-\textbf{Ba} & \makecell{Send Cl\_i;\\ C}            & C                        & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O  & I               & I  & I                             \\ \hline
-\textbf{Co} & W                        & L                        & -                        & -  & -               & -  & -                             \\ \hline
-\textbf{Fo} & -                        & \makecell{Send data;\\ S}             & -                        & -  & -               & -  & -                             \\ \hline
-Ev & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & I  & I               & I  & -                             \\ \hline
+ & \textbf{D} & \textbf{C} & \textbf{W} & \textbf{S} & \textbf{O} & \textbf{L} & \textbf{I} \\ \hline
+\textbf{Wr} & D & \makecell{Send Wr\textsubscript{i};\\ D} & W & \frownie & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L} \\ \hline
+\textbf{Re} & D & C & \frownie & S & S & \frownie & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
+\textbf{Ba} & \makecell{Send Cl\_i;\\ C} & C & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O & I & I & I \\ \hline
+\textbf{Co} & W & L & - & - & - & - & - \\ \hline
+\textbf{Fo} & - & \makecell{Send data;\\ S} & - & - & - & - & - \\ \hline
+\textbf{Ev} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & I & I & I & - \\ \hline
 \end{tabular}
 \end{table}
 
 Transitions for the directory:
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \caption{Directory transitions}
 \label{directory-protocol}
 \begin{tabular}{|c|c|c|c|c|c|}
 \hline
-   & \textbf{D\textsubscript{p}}                        & \textbf{C\textsubscript{p}}                        & \textbf{W\textsubscript{p}}                        & \textbf{V}  & \textbf{I}     \\ \hline
+ & \textbf{D\textsubscript{p}} & \textbf{C\textsubscript{p}} & \textbf{W\textsubscript{p}} & \textbf{V} & \textbf{I} \\ \hline
 \textbf{Wr\textsubscript{i}} & \makecell{Assert $i \neq p$; \\ Reject $i$; \\ Send Co to $p$; \\ W\textsubscript{p}} & \makecell{if $i = p$ then D\textsubscript{p}; \\ else: \{ Accept $i$; \\ Send Co to $p$; \\ W\textsubscript{i}\}} & \makecell{Assert $i \neq p$; \\ Reject $i$; \\ W\textsubscript{p}} & \makecell{Accept $i$; \\ D\textsubscript{i}} & \makecell{Accept $i$; \\ D\textsubscript{i}} \\ \hline
-\textbf{Ac\textsubscript{i}} & XX & \makecell{Send Fo to $p$; \\ Receive data from $p$; \\ Reject $i$; \\ Send data to $i$; \\ V} & XX & \makecell{Reject $i$; \\ Send data to $i$; \\ V} & \makecell{Retrieve data; \\ Accept $i$; \\ Send data to $i$; \\ V} \\ \hline
+\textbf{Ac\textsubscript{i}} & \frownie & \makecell{Send Fo to $p$; \\ Receive data from $p$; \\ Reject $i$; \\ Send data to $i$; \\ V} & \frownie & \makecell{Reject $i$; \\ Send data to $i$; \\ V} & \makecell{Retrieve data; \\ Accept $i$; \\ Send data to $i$; \\ C\textsubscript{i}} \\ \hline
 \textbf{Cl\textsubscript{i}} & \makecell{Assert $i = p$; \\ C\textsubscript{p}} & - & - & - & - \\ \hline
 \textbf{Sh\textsubscript{i}} & - & - & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & - & - \\ \hline
 \textbf{Fl\textsubscript{i}} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & \makecell{Assert $i = p$; \\ Receive data from $p$; \\ V} & - & - \\ \hline
@@ -227,14 +274,18 @@ Transitions for the directory:
 \end{tabular}
 \end{table}
 
+Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3). 
+
 
 \section{Simulation Results}
 
 \section{Discussion}
 
+\subsection{Future Work / Extensions}
+\textbf{Sub-cacheline granularity}: As mentioned previously, our current scheme interprets memory at the granularity of cache lines. It is possible to extend this scheme to sub-cacheline granularity, in a way similar to that of DeNovo, at potentially linear memory overhead in the size of each cache line \cite{choi2010denovo}. Intuitively, supporting sub-cacheline granularity involves replicating each cache line and keeping track of part of each copy of the line. To be precise, if there are $k$ memory locations in cache line $L$, create lines $L_1, \dots, L_k$ and for line $L_i$, classify the entire line solely based on the state of memory location $i$. This therefore requires an extra $\log k$ bits for bookkeeping on each of $k-1$ new copies of each cache line, resulting in $k \log k$ times as much space per original cache line.
+
 \section{Conclusion}
 
-\section{Works Cited}
 \printbibliography
 
 
