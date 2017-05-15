@@ -248,10 +248,10 @@ Transitions for L1 cache $i$. All messages are sent to (and received from) the d
 \begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline
  & \textbf{D} & \textbf{C} & \textbf{W} & \textbf{S} & \textbf{O} & \textbf{L} & \textbf{I} \\ \hline
-\textbf{Wr} & D & \makecell{Send Wr\textsubscript{i};\\ D} & W & D & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L} \\ \hline
+\textbf{Wr} & D & \makecell{Send Wr\textsubscript{i};\\ D} & W & \makecell{Send Wr\textsubscript{i};\\ D/L} & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L} \\ \hline
 \textbf{Re} & D & C & \frownie & S & S & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
 \textbf{Ba} & \makecell{Send Cl\_i;\\ C} & C & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O & I & I & I \\ \hline
-\textbf{Co} & W & L & - & - & - & - & - \\ \hline
+\textbf{Co} & W & I & - & - & - & - & - \\ \hline
 \textbf{Fo} & - & \makecell{Send data;\\ S} & - & - & - & - & - \\ \hline
 \textbf{Ev} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & I & I & I & - \\ \hline
 \end{tabular}
