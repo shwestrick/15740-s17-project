@@ -146,7 +146,7 @@ if (sub-and-fetch(s,1) == 0) {
 % to add: initial cache coherence policy and transition diagram, plus explanations of the optimizations
 
 \section{WSI Cache Coherence}
-Our first approach at phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: Winner, Shared, and Invalid.
+Our first approach to phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: Winner, Shared, and Invalid.
 
 Intuitively, WSI ensures that data can only be in the Shared state during a read phase; during a write phase, data can be in either Winner or Invalid, depending on whether or not the corresponding processor won the write-write race. 
 
