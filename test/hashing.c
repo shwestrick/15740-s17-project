@@ -8,6 +8,7 @@
 typedef struct {
   bool empty;
   long value;
+  int winner;
 } option;
 
 int P;
@@ -26,8 +27,10 @@ inline long offset(int tid, long n) {
 }
 
 inline void initializeTableEmpty(long lo, long hi) {
-  for (long i = lo; i < hi; i++)
+  for (long i = lo; i < hi; i++) {
     T[i].empty = true;
+    T[i].winner = -1;
+  }
 }
 
 inline long constrain(long h) {
@@ -41,7 +44,7 @@ void set_again_false() { again = false; }
 
 void* threadFunc(void* arg) {
   int tid = *((int*) arg);
-  
+
   // initialize local data
   long lo = offset(tid, N);
   long n = offset(tid+1, N) - lo;
@@ -59,15 +62,16 @@ void* threadFunc(void* arg) {
 
     //printf("==== Round %d ====\n", R);
     //printf("%d: round %d with %ld items left\n", tid, r, n);
-    
+
     for (long i = 0; i < n; i++) {
       long x = D[i];
       //printf("Trying %ld at %ld\n", x, constrain(hashl(x) + r));
       option* elem = T + constrain(hashl(x) + r);
-      if (elem->empty) {
-        elem->empty = false;
-        elem->value = x;
-      }
+      elem->winner = tid;
+      // if (elem->empty) {
+      //   elem->empty = false;
+      //   elem->value = x;
+      // }
     }
 
     synchronize_before(set_again_false, &B, tid);
@@ -75,8 +79,12 @@ void* threadFunc(void* arg) {
     long j = 0;
     for (long i = 0; i < n; i++) {
       long x = D[i];
-      if (T[constrain(hashl(x) + r)].value != x) {
-        //printf("Saving %ld for next round\n", x);
+      option* elem = T + constrain(hashl(x) + r);
+      if (elem->winner == tid && elem->empty) {
+        elem->empty = false;
+        elem->value = x;
+      }
+      else {
         D[j] = x;
         j++;
       }
@@ -92,7 +100,7 @@ void* threadFunc(void* arg) {
 
   free(D);
 
-  return NULL; 
+  return NULL;
 }
 
 int main(int argc, char** argv) {

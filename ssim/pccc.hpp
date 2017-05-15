@@ -15,7 +15,7 @@ template <class T> class Cell; // forward declaration
 
 class Entry {
 public:
-  virtual void barrier(int id) = 0;
+  virtual bool barrier(int id) = 0;
 };
 
 class Memory {
@@ -41,10 +41,10 @@ public:
   }
 
   template <class T>
-  Cell<T>* cell() {
+  Cell<T>* cell(std::string name) {
     pthread_mutex_lock(&lock);
 
-    auto x = new Cell<T>(this);
+    auto x = new Cell<T>(this, name);
     cells.insert(x);
 
     pthread_mutex_unlock(&lock);
@@ -56,17 +56,13 @@ public:
     l1caches[id].insert(e);
   }
 
-  // remove e from id's l1 cache
-  void invalidate(int id, Entry* e) {
-    l1caches[id].erase(e);
-  }
-
   // when processor `id` issues a barrier, we need to tell every element of its
   // cache to handle barrier transitions.
   void barrier(int id) {
     auto l1cache = l1caches[id];
-    for (auto itr = l1cache.begin(); itr != l1cache.end(); ++itr) {
-      (*itr)->barrier(id);
+    for (auto itr = l1cache.begin(); itr != l1cache.end(); ) {
+      if ((*itr)->barrier(id)) itr = l1caches[id].erase(itr);
+      else ++itr;
     }
   }
 
@@ -99,6 +95,7 @@ class Cell : public Entry {
 
 private:
 
+  std::string name;
   T value;
   int registered; // if dstate is one of Dirty|Clean|Winner, then this is the id of the owning thread
   DState dstate;
@@ -108,7 +105,8 @@ private:
 
 public:
 
-  Cell(Memory* m) {
+  Cell(Memory* m, std::string str) {
+    name = str;
     memory = m;
     registered = -1;
     dstate = DState::Invalid;
@@ -121,12 +119,15 @@ public:
 
   T read(int id);
   void write(int id, T v);
-  void barrier(int id) override;
+  bool barrier(int id) override;
 
 };
 
 template <class T>
 T Cell<T>::read(int id) {
+  assert(0 <= id && id < memory->num_procs);
+  memory->touch(id, this);
+
   pthread_mutex_lock(&lock);
 
   T result = value;
@@ -137,7 +138,7 @@ T Cell<T>::read(int id) {
     case PState::Clean:
       break;
     case PState::Winner:
-      panic("thread %d attempted to read while winner.", id);
+      panic("thread %d attempted to read Cell(%s) while winner.", id, name.c_str());
       break;
     case PState::Shared:
       break;
@@ -145,12 +146,12 @@ T Cell<T>::read(int id) {
       pstates[id] = PState::Shared;
       break;
     case PState::Loser:
-      panic("thread %d attempted to read while loser.", id);
+      panic("thread %d attempted to read Cell(%s) while loser.", id, name.c_str());
       break;
     case PState::Invalid:
       switch (dstate) {
         case DState::Dirty:
-          panic("thread %d attempted to acquire while directory has thread %d registered as dirty.", id, registered);
+          panic("thread %d attempted to acquire Cell(%s) while directory has thread %d registered as dirty.", id, name.c_str(), registered);
           break;
         case DState::Clean:
           assert(pstates[registered] == PState::Clean);
@@ -160,13 +161,13 @@ T Cell<T>::read(int id) {
           registered = -1;
           break;
         case DState::Winner:
-          panic("thread %d attempted to acquire while directory has thread %d registered as winner.", id, registered);
+          panic("thread %d attempted to acquire Cell(%s) while directory has thread %d registered as winner.", id, name.c_str(), registered);
           break;
         case DState::Valid:
           pstates[id] = PState::Shared;
           break;
         case DState::Invalid:
-          info("thread %d is now registered clean", id);
+          //info("thread %d is now registered clean", id);
           pstates[id] = PState::Clean;
           dstate = DState::Clean;
           registered = id;
@@ -181,6 +182,8 @@ T Cell<T>::read(int id) {
 
 template <class T>
 void Cell<T>::write(int id, T v) {
+  assert(0 <= id && id < memory->num_procs);
+  memory->touch(id, this);
   pthread_mutex_lock(&lock);
 
   switch (pstates[id]) {
@@ -202,7 +205,7 @@ void Cell<T>::write(int id, T v) {
       value = v;
       break;
     case PState::Shared:
-      panic("thread %d attempted to write while shared.", id)
+      panic("thread %d attempted to write Cell(%s) while shared.", id, name.c_str())
       break;
     case PState::Old:
       switch (dstate) {
@@ -282,7 +285,13 @@ void Cell<T>::write(int id, T v) {
 }
 
 template <class T>
-void Cell<T>::barrier(int id) {
+bool Cell<T>::barrier(int id) {
+  //info("Thread %d barrier on Cell(%s)", id, name.c_str());
+
+  assert(0 <= id && id < memory->num_procs);
+
+  bool result = false;
+
   pthread_mutex_lock(&lock);
 
   switch (pstates[id]) {
@@ -312,11 +321,12 @@ void Cell<T>::barrier(int id) {
     case PState::Loser:
     case PState::Invalid:
       pstates[id] = PState::Invalid;
-      memory->invalidate(id, this);
+      result = false;
       break;
   }
 
   pthread_mutex_unlock(&lock);
+  return result;
 }
 
 #endif
