@@ -100,7 +100,7 @@ A \textit{program} consists of $P$ dynamic streams of instructions, where $P$ is
 
 Two distinct instructions $A$ and $B$ are \textit{concurrent} if there exist two executions $E_1$ and $E_2$ such that $A \prec B$ in $E_1$ and $B \prec A$ in $E_2$, where the relation $X \prec Y$ means $X$ appears before $Y$ in a specific execution. In other words, if the relative order of $A$ and $B$ is not constant over all executions, then $A$ and $B$ are defined to be concurrent.
 
-We distinguish between three classes of atomic memory operations: read, write, and read-modify-write (such as compare-and-swap, fetch-and-add, etc). We say that a multi-threaded program is \textit{phase-concurrent} if all concurrent operations at the \textit{same} memory location are of the same class. In our implementation, we discretize memory locations at the level of cache lines; we later describe how to extend this framework to the granularity of individual memory locations. \todo{actually do this -- put in extensions / misc?}
+We distinguish between three classes of atomic memory operations: read, write, and read-modify-write (such as compare-and-swap, fetch-and-add, etc). We say that a multi-threaded program is \textit{phase-concurrent} if all concurrent operations at the \textit{same} memory location are of the same class. In our implementation, we discretize memory locations at the level of cache lines; we later describe how to extend this framework to the granularity of individual memory locations.
 
 Under this definition, phase-concurrent programs must rely on read-modify-write (RMW) operations to synchronize effectively. For example, here is a phase-concurrent program using two processes to sum an array $a$ of length $2n$ and print the result. Both processes run the same code. The value $p$ is the identifier of the process (in this example, 0 or 1). Assume there is some shared cell $s$ initially set to $2$. We use $r$ to store intermediate results, and the RMW operation sub-and-fetch (which atomically subtracts and fetches the new value) to synchronize.
 
@@ -151,7 +151,7 @@ Intuitively, WSI ensures that data can only be in the Shared state during a read
 
 \begin{table}[H]
 \centering
-\caption{WSI cache transitions}
+\caption{WSI cache transitions.}
 \label{wsi-cache-protocol}
 \begin{tabular}{|c|c|c|c|}
 \hline
@@ -165,7 +165,7 @@ Intuitively, WSI ensures that data can only be in the Shared state during a read
 \end{tabular}
 \end{table}
 
-However, WSI suffers from many performance issues because it does not take advantage of privacy, track ``losers'' in each write phase, and sometimes invalidates data too early to be of use; each of these issues is addressed below.
+However, WSI suffers from many performance issues because it does not take advantage of privacy, does not track ``losers'' in each write phase, and sometimes invalidates data too early to be of use; each of these issues is addressed below.
 
 \textbf{Private data ($W \rightarrow D, C, W$)}:
 In this protocol, we must always conservatively ``reset'' (i.e., transition to Invalid) at all barriers. However, if a processor has exclusive access to a memory location, then interacting with the directory and transitioning into Shared or Invalid are inefficient, the intuition being that if no other processor is trying to access the data, there is no need for communication overhead or unnecessary transitions to states that implicitly assume that more than one processor has access to the data. In order to deal with exclusive data, we created two new states, $D$ and $C$, corresponding to Exclusive Dirty and Exclusive Clean, respectively, in which processors have private ownership of the data.
@@ -181,7 +181,7 @@ Together, these optimizations transformed our original WSI protocol to DCWSOLI, 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.5\textwidth]{img/posterfig2.png}
-\caption{Basic cache coherence protocol and optimizations}
+\caption{Basic cache coherence protocol and optimizations.}
 \label{wsi-to-dcwsoli}
 \end{figure}
 
@@ -242,7 +242,7 @@ Transitions for L1 cache $i$. All messages are sent to (and received from) the d
 
 \begin{table}[H]
 \centering
-\caption{Cache transitions}
+\caption{Cache transitions.}
 \label{cache-protocol}
 \begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline
@@ -260,7 +260,7 @@ Transitions for the directory:
 
 \begin{table}[H]
 \centering
-\caption{Directory transitions}
+\caption{Directory transitions.}
 \label{directory-protocol}
 \begin{tabular}{|c|c|c|c|c|c|}
 \hline
@@ -281,8 +281,12 @@ Note that there are only five directory states, so there will be no asymptotic s
 
 \section{Discussion}
 
-\subsection{Future Work / Extensions}
+\section{Future Extensions}
 \textbf{Sub-cacheline granularity}: As mentioned previously, our current scheme interprets memory at the granularity of cache lines. It is possible to extend this scheme to sub-cacheline granularity, in a way similar to that of DeNovo, at potentially linear memory overhead in the size of each cache line \cite{choi2010denovo}. Intuitively, supporting sub-cacheline granularity involves replicating each cache line and keeping track of part of each copy of the line. To be precise, if there are $k$ memory locations in cache line $L$, create lines $L_1, \dots, L_k$ and for line $L_i$, classify the entire line solely based on the state of memory location $i$. This therefore requires an extra $\log k$ bits for bookkeeping on each of $k-1$ new copies of each cache line, resulting in $k \log k$ times as much space per original cache line.
+
+\textbf{Larger hierarchies}: So far, we only deal with private L1 and shared L2 caches. A natural extension of this framework to accomodate larger cache hierarchies would entail further 
+
+\textbf{Barrier coalescing}: Another further optimization is \textit{barrier coalescing}, where multiple consecutive barriers at a memory location are grouped together and treated as one. This is potentially useful in the case where there are no intervening memory accesses of the cache line between consecutive barriers, and therefore repeatedly downgrading at barriers may be an unnecessary and inefficient policy.
 
 \section{Conclusion}
 
