@@ -66,7 +66,7 @@
 
 \begin{document}
 
-\newcommand{\todo}[1]{{\color{red} [[TODO: {#1}]]}}
+\newcommand{\todo}[1]{{\color{red} \textbf{TODO}: {#1}}}
 
 \maketitle
 
@@ -277,10 +277,13 @@ Transitions for the directory:
 
 Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3). 
 
+\todo{Add explanations for transitions + proof of correctness}
 
 \section{Simulation Results}
+\todo{Fill in results here: hits + traffic from Charlie}
 
 \section{Discussion}
+\todo{Fill in here}
 
 \section{Future Extensions}
 \textbf{Sub-cacheline granularity}: As mentioned previously, our current scheme interprets memory at the granularity of cache lines. It is possible to extend this scheme to sub-cacheline granularity, in a way similar to that of DeNovo, at a potentially linear factor of memory overhead in the size of each cache line \cite{choi2010denovo}. Intuitively, supporting sub-cacheline granularity involves replicating each cache line and keeping track of part of each copy of the line. To be precise, if there are $k$ memory locations in cache line $L$, create lines $L_1, \dots, L_k$ and for line $L_i$, classify the entire line solely based on the state of memory location $i$. This therefore requires an extra $\log k$ bits for bookkeeping on each of $k-1$ new copies of each cache line, resulting in $k \log k$ times as much space per original cache line.
@@ -304,8 +307,6 @@ Note that there are only five directory states, so there will be no asymptotic s
 \end{figure}
 
 \textbf{Barrier coalescing}: Another further optimization is \textit{barrier coalescing}, where two or more consecutive barriers at a memory location are grouped together and treated as two ``effective'' barriers. This is potentially useful in the case where there are no intervening memory accesses of the cache line \textit{from the processor's point of view} between many consecutive barriers, and therefore repeatedly downgrading at barriers may be an unnecessary and inefficient policy. However, note that we cannot treat many consecutive barriers as a single barrier because of our transitions from $S$ to $O$ and then $O$ to $I$ on barriers; if we try to coalesce too many barriers with no intervening activity \textit{for a single processor} into one, then we may keep data that has been invalidated by writes by other processors (i.e., to ensure correctness, we need to transition to $I$ instead of $O$).
-
-\section{Conclusion}
 
 \printbibliography
 
