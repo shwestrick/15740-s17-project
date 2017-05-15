@@ -171,7 +171,7 @@ class DCWSOLIBottomCC : public GlobAlloc {
 
         inline bool isDirty(uint32_t lineId) {
             return (array[lineId] == D) || (array[lineId] == W);
-            //TODO determine if L should be considered dirty for zsim purposes
+            //TODO determine if L or C should be considered dirty for zsim purposes
         }
 
         //Could extend with isExclusive, isDirty, etc, but not needed for now.
