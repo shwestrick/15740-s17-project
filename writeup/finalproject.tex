@@ -146,9 +146,24 @@ if (sub-and-fetch(s,1) == 0) {
 % to add: initial cache coherence policy and transition diagram, plus explanations of the optimizations
 
 \section{WSI Cache Coherence}
-Our first approach to phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: Winner, Shared, and Invalid.
+One of the primary challenges in developing a cache coherence protocol for phase-concurrent programs is managing winners and losers at writes. Some existing techniques can be recycled here. For example, in DeNovo, Choi et al. proposed reusing the shared LLC as a directory, allowing them to track the ``owner" of a modified cache line with no asymptotic space overhead \cite{choi2010denovo}. We will utilize a similar trick. \textbf{From now on, we will refer to the \textit{shared LLC} and the \textit{directory} interchangeably.} Note that this approach requires inclusive caching: every line in an L1 cache must also be in the shared LLC.
+
+At the end of a write phase, we need to commit the winning write back to the directory so that it is visible to other processes. Although we could rely on programmer-directed cache self-invalidations, we would rather not do so. Instead, we will conservatively guess that each synchronization instruction is a barrier which signals the end of a phase.
+
+Our first approach to phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: \textbf{W}inner, \textbf{S}hared, and \textbf{I}nvalid.
 
 Intuitively, WSI ensures that data can only be in the Shared state during a read phase; during a write phase, data can be in either Winner or Invalid, depending on whether or not the corresponding processor won the write-write race. 
+
+For a particular line in an L1 cache, the events which cause state transitions are as follows.
+
+\begin{enumerate}
+\item \textbf{(Wr) Write}: a write to this line, issued by the local processor.
+\item \textbf{(Re) Read}: a read of this line, issued by the local processor.
+\item \textbf{(Ba) Barrier}: a read-modify-write of any line, issued by the local processor.
+\item \textbf{(Co) Conflict}: a message from the directory indicating a write to this line by some other processor.
+\item \textbf{(Fo) Forward}: a message from the directory indicating a read of this line by some other processor. The cache has to respond to this directory by sending the contents of the line.
+\item \textbf{(Ev) Eviction}: an eviction of this line due to the local caching policy.
+\end{enumerate}
 
 \begin{table}[H]
 \centering
@@ -166,7 +181,7 @@ Intuitively, WSI ensures that data can only be in the Shared state during a read
 \end{tabular}
 \end{table}
 
-However, WSI suffers from many performance issues because it does not take advantage of privacy, does not track ``losers'' in each write phase, and sometimes invalidates data too early to be of use; each of these issues is addressed below.
+Although WSI is a correct cache coherence policy for phase-concurrent programs, it suffers from many performance issues because it does not take advantage of privacy, does not track ``losers'' in each write phase, and sometimes invalidates data too early to be of use; each of these issues is addressed below.
 
 \textbf{Private data ($W \rightarrow D, C, W$)}:
 In this protocol, we must always conservatively ``reset'' (i.e., transition to Invalid) at all barriers. However, if a processor has exclusive access to a memory location, then interacting with the directory and transitioning into Shared or Invalid are inefficient, the intuition being that if no other processor is trying to access the data, there is no need for communication overhead or unnecessary transitions to states that implicitly assume that more than one processor has access to the data. In order to deal with exclusive data, we created two new states, $D$ and $C$, corresponding to Exclusive Dirty and Exclusive Clean, respectively, in which processors have private ownership of the data.
@@ -187,9 +202,7 @@ Together, these optimizations transformed our original WSI protocol to DCWSOLI, 
 \end{figure}
 
 \section{DCWSOLI Cache Coherence}
-One of the primary challenges in developing a cache coherence protocol for phase-concurrent programs is managing winners and losers at writes. Some existing techniques can be recycled here. For example, in DeNovo, Choi et al. proposed reusing the shared LLC as a directory, allowing them to track the ``owner" of a modified cache line with no asymptotic space overhead \cite{choi2010denovo}. We will utilize a similar trick. \textbf{From now on, we will refer to the \textit{shared LLC} and the \textit{directory} interchangeably.} Note that this approach requires inclusive caching: every line in an L1 cache must also be in the shared LLC.
-
-At the end of a write phase, we need to commit the winning write back to the directory so that it is visible to other processes. Although we could rely on programmer-directed cache self-invalidations, we would rather not do so. Instead, we will conservatively guess that each synchronization instruction is a barrier which signals the end of a phase.
+With the above optimizations, the three-state WSI protocol turns into a seven-state protocol we term DCWSOLI (Exclusive \textbf{D}irty, Exclusive \textbf{C}lean, \textbf{W}inner, \textbf{S}hared, \textbf{O}ld, \textbf{L}oser, \textbf{I}nvalid). We now describe the states, transitions, and correctness of this protocol.
 
 \subsection{Local Caches}
 Each line in an L1 cache can be in one of seven states. We summarize them briefly here, where we list them from ``most powerful'' to ``least powerful''.
@@ -202,17 +215,6 @@ Each line in an L1 cache can be in one of seven states. We summarize them briefl
 \item \textbf{(O) Old:} this is one of (possibly) many copies of the line in the system, but it may be invalid. Unless the data is refreshed by a read, this line needs to be self-invalidated at the next synchronization.
 \item \textbf{(L) Loser:} this line is invalid due to some other processor having concurrently written to this line.
 \item \textbf{(I) Invalid:} this line is not in the cache.
-\end{enumerate}
-
-For a particular line in an L1 cache, the events which cause state transitions are as follows.
-
-\begin{enumerate}
-\item \textbf{(Wr) Write}: a write to this line, issued by the local processor.
-\item \textbf{(Re) Read}: a read of this line, issued by the local processor.
-\item \textbf{(Ba) Barrier}: a read-modify-write of any line, issued by the local processor.
-\item \textbf{(Co) Conflict}: a message from the directory indicating a write to this line by some other processor.
-\item \textbf{(Fo) Forward}: a message from the directory indicating a read of this line by some other processor. The cache has to respond to this directory by sending the contents of the line.
-\item \textbf{(Ev) Eviction}: an eviction of this line due to the local caching policy.
 \end{enumerate}
 
 \subsection{Directory}
