@@ -44,7 +44,18 @@ public:
   Cell<T>* cell(std::string name) {
     pthread_mutex_lock(&lock);
 
-    auto x = new Cell<T>(this, name);
+    auto x = new Cell<T>(this, name, false);
+    cells.insert(x);
+
+    pthread_mutex_unlock(&lock);
+    return x;
+  }
+
+  template <class T>
+  Cell<T>* logged_cell(std::string name) {
+    pthread_mutex_lock(&lock);
+
+    auto x = new Cell<T>(this, name, true);
     cells.insert(x);
 
     pthread_mutex_unlock(&lock);
@@ -80,6 +91,17 @@ enum class DState {
   Invalid
 };
 
+const char* DStateName(DState s) {
+  switch(s) {
+    case DState::Dirty: return "DState.Dirty";
+    case DState::Clean: return "DState.Clean";
+    case DState::Winner: return "DState.Winner";
+    case DState::Valid: return "DState.Valid";
+    case DState::Invalid: return "DState.Invalid";
+  }
+  return "DStateName Error";
+}
+
 enum class PState {
   Dirty,
   Clean,
@@ -90,12 +112,26 @@ enum class PState {
   Invalid
 };
 
+const char* PStateName(PState s) {
+  switch(s) {
+    case PState::Dirty: return "PState.Dirty";
+    case PState::Clean: return "PState.Clean";
+    case PState::Winner: return "PState.Winner";
+    case PState::Shared: return "PState.Shared";
+    case PState::Old: return "PState.Old";
+    case PState::Loser: return "PState.Loser";
+    case PState::Invalid: return "PState.Invalid";
+  }
+  return "PStateName Error";
+}
+
 template <class T>
 class Cell : public Entry {
 
 private:
 
   std::string name;
+  bool logged; // set to true if you want to see all sorts of info
   T value;
   int registered; // if dstate is one of Dirty|Clean|Winner, then this is the id of the owning thread
   DState dstate;
@@ -105,7 +141,8 @@ private:
 
 public:
 
-  Cell(Memory* m, std::string str) {
+  Cell(Memory* m, std::string str, bool dolog) {
+    logged = dolog;
     name = str;
     memory = m;
     registered = -1;
@@ -130,6 +167,8 @@ T Cell<T>::read(int id) {
 
   pthread_mutex_lock(&lock);
 
+  if (logged) info("Thread %d reading Cell(%s): [%s] [%s %d]", id, name.c_str(), PStateName(pstates[id]), DStateName(dstate), registered);
+
   T result = value;
 
   switch (pstates[id]) {
@@ -146,8 +185,8 @@ T Cell<T>::read(int id) {
       pstates[id] = PState::Shared;
       break;
     case PState::Loser:
-      panic("thread %d attempted to read Cell(%s) while loser.", id, name.c_str());
-      break;
+      //panic("thread %d attempted to read Cell(%s) while loser.", id, name.c_str());
+      //break;
     case PState::Invalid:
       switch (dstate) {
         case DState::Dirty:
@@ -186,6 +225,8 @@ void Cell<T>::write(int id, T v) {
   memory->touch(id, this);
   pthread_mutex_lock(&lock);
 
+  if (logged) info("Thread %d writing Cell(%s): [%s] [%s %d]", id, name.c_str(), PStateName(pstates[id]), DStateName(dstate), registered);
+
   switch (pstates[id]) {
     case PState::Dirty:
       assert(dstate == DState::Dirty);
@@ -205,8 +246,14 @@ void Cell<T>::write(int id, T v) {
       value = v;
       break;
     case PState::Shared:
-      panic("thread %d attempted to write Cell(%s) while shared.", id, name.c_str())
-      break;
+      //panic("thread %d attempted to write Cell(%s) while shared.", id, name.c_str())
+      //assert(dstate == DState::Valid);
+      //assert(registered == -1);
+      // pstates[id] = PState::Dirty; // FIX
+      // dstate = DState::Dirty;
+      // registered = id;
+      // value = v;
+      // break;
     case PState::Old:
       switch (dstate) {
         case DState::Dirty:
@@ -218,7 +265,8 @@ void Cell<T>::write(int id, T v) {
         case DState::Clean:
           assert(registered != id);
           pstates[id] = PState::Winner;
-          pstates[registered] = PState::Loser;
+          //pstates[registered] = PState::Loser;
+          pstates[registered] = PState::Invalid; // FIX
           dstate = DState::Winner;
           registered = id;
           value = v;
@@ -240,8 +288,9 @@ void Cell<T>::write(int id, T v) {
       }
       break;
     case PState::Loser:
-      assert(dstate == DState::Winner);
-      assert(registered != id);
+      // NOTE: It turns out that the directory could be Valid right now
+      // assert_msg(dstate == DState::Winner, "Thread %d failed \"dstate == DState::Winner\" during write to Cell(%s), where dstate == %s", id, name.c_str(), DStateName(dstate));
+      // assert(registered != id);
       break;
     case PState::Invalid:
       switch (dstate) {
@@ -254,7 +303,8 @@ void Cell<T>::write(int id, T v) {
         case DState::Clean:
           assert(registered != id);
           pstates[id] = PState::Winner;
-          pstates[registered] = PState::Loser;
+          //pstates[registered] = PState::Loser;
+          pstates[registered] = PState::Invalid; // FIX
           dstate = DState::Winner;
           registered = id;
           value = v;
@@ -294,15 +344,16 @@ bool Cell<T>::barrier(int id) {
 
   pthread_mutex_lock(&lock);
 
+  if (logged) info("Thread %d barrier on Cell(%s): [%s] [%s %d]", id, name.c_str(), PStateName(pstates[id]), DStateName(dstate), registered);
+
   switch (pstates[id]) {
     case PState::Dirty:
-      assert(dstate == DState::Dirty);
-      assert(registered == id);
+      assert_msg(dstate == DState::Dirty && registered == id, "Thread %d failed 'dstate == DState::Dirty && registered == id' during barrier on Cell(%s), where dstate == %s, registered == %d", id, name.c_str(), DStateName(dstate), registered);
       pstates[id] = PState::Clean;
       dstate = DState::Clean;
       break;
     case PState::Clean:
-      assert(dstate == DState::Clean);
+      assert_msg(dstate == DState::Clean && registered == id, "Thread %d failed 'dstate == DState::Clean && registered == id' during barrier on Cell(%s), where dstate == %s, registered == %d", id, name.c_str(), DStateName(dstate), registered);
       assert(registered == id);
       break;
     case PState::Winner:
@@ -313,8 +364,8 @@ bool Cell<T>::barrier(int id) {
       registered = -1;
       break;
     case PState::Shared:
-      assert(dstate == DState::Valid);
-      assert(registered == -1);
+      //assert_msg(dstate == DState::Valid, "Thread %d failed \"dstate == DState::Valid\", where dstate == %s", id, DStateName(dstate));
+      //assert(registered == -1);
       pstates[id] = PState::Old;
       break;
     case PState::Old:

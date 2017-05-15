@@ -44,6 +44,16 @@ inline long constrain(int tid, long h) {
   return i;
 }
 
+void check_contains(int tid, long x) {
+  long MM = M->read(tid);
+  long h = hashl(x);
+  for (int r = 0; r < MM; r++) {
+    option* elem = T + constrain(tid, h + r);
+    if (!elem->empty->read(tid) && elem->value->read(tid) == x) return;
+  }
+  panic("Table does not contain %ld", x);
+}
+
 void* threadFunc(void* arg) {
   int tid = *((int*) arg);
 
@@ -62,7 +72,7 @@ void* threadFunc(void* arg) {
     D[i]->write(tid, lo+i);
   }
 
-  info("Thread %d Initializing table", tid);
+  //info("Thread %d Initializing table", tid);
 
   // initialize a region of the hash table
   initializeTableEmpty(tid, offset(tid, tid, M->read(tid)), offset(tid, tid+1, M->read(tid)));
@@ -75,7 +85,7 @@ void* threadFunc(void* arg) {
     int r = R->read(tid);
 
     //printf("==== Round %d ====\n", R);
-    info("Thread %d: round %d with %ld items left", tid, r, n);
+    //info("Thread %d: round %d with %ld items left", tid, r, n);
 
     for (long i = 0; i < n; i++) {
       long x = D[i]->read(tid);
@@ -144,9 +154,15 @@ int main(int argc, char** argv) {
   R = memory->cell<int>("R"); R->write(0, 0);
   T = new option[MM]; //malloc(M * sizeof(option));
   for (long i = 0; i < MM; i++) {
-    T[i].empty = memory->cell<bool>("T[" + std::to_string(i) + "].empty");
-    T[i].value = memory->cell<long>("T[" + std::to_string(i) + "].value");
-    T[i].winner = memory->cell<int>("T[" + std::to_string(i) + "].winner");
+    // if (i == 1) {
+    //   T[i].empty = memory->cell<bool>("T[" + std::to_string(i) + "].empty");
+    //   T[i].value = memory->cell<long>("T[" + std::to_string(i) + "].value");
+    //   T[i].winner = memory->cell<int>("T[" + std::to_string(i) + "].winner");
+    // } else {
+      T[i].empty = memory->cell<bool>("T[" + std::to_string(i) + "].empty");
+      T[i].value = memory->cell<long>("T[" + std::to_string(i) + "].value");
+      T[i].winner = memory->cell<int>("T[" + std::to_string(i) + "].winner");
+    // }
   }
 
   memory->barrier(0);
@@ -155,7 +171,7 @@ int main(int argc, char** argv) {
   pthread_t threads[PP];
   int thread_ids[PP];
 
-  info("Spawning threads");
+  //info("Spawning threads");
 
   // Spawn threads
   for (int t = PP-1; t >= 0; t--) {
@@ -166,12 +182,13 @@ int main(int argc, char** argv) {
 
   for (int t = 1; t < PP; t++) pthread_join(threads[t], NULL);
 
-  info("Joined threads");
+  //info("Joined threads");
 
-  for (long i = 0; i < MM; i++) {
-    if (T[i].empty->read(0)) printf("_ ");
-    else printf("%ld ", T[i].value->read(0));
-  }
+  // for (long i = 0; i < MM; i++) {
+  //   if (T[i].empty->read(0)) printf("_ ");
+  //   else printf("%ld ", T[i].value->read(0));
+  // }
+  for (long x = 0; x < NN; x++) check_contains(0, x);
 
   delete[] T;
   delete memory;
