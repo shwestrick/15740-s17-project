@@ -1,5 +1,5 @@
 #include <iostream>
-#include "pccc.cpp"
+#include "pccc.hpp"
 
 Memory C = Memory(1);
 

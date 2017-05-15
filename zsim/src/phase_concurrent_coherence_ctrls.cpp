@@ -57,14 +57,19 @@ uint64_t DCWSOLIBottomCC::processEviction(Address wbLineAddr, uint32_t lineId, b
     DCWSOLIState* state = &array[lineId];
     if (lowerLevelWriteback) {
         //If this happens, when tcc issued the invalidations, it got a writeback. This means we have to do a PUTX, i.e. we have to transition to M if we are in E
-        assert(*state == D || *state == W); //Must have exclusive permission!
-        *state = W; //Silent E->M transition (at eviction); now we'll do a PUTX
+        assert(*state == D || *state == C || *state == W); //Must have exclusive permission!
+        if (*state == D || *state == C){
+            *state = D;
+        }
+//        *state = W; //Silent E->M transition (at eviction); now we'll do a PUTX // We can stay at W
     }
     uint64_t respCycle = cycle;
     switch (*state) {
         case I:
-        case L:
             break; //Nothing to do
+        case L:
+//            *state = I; //No messages to lower caches, but state needs to be updated.
+//            break; // I think Loser needs to send a PUTS messge (which doesn't do anything) in order for the directory to mark that it is no longer a sharer
         case O:
         case S:
         case C:
@@ -170,17 +175,18 @@ void DCWSOLIBottomCC::processInval(Address lineAddr, uint32_t lineId, InvType ty
             //Hmmm, do we have to propagate loss of exclusivity down the tree? (nah, topcc will do this automatically -- it knows the final state, always!)
             assert_msg(*state == D || *state == C, "Invalid state %s", DCWSOLIStateName(*state));
             if (*state == D){
-                *reqWriteback = true;
+//                *reqWriteback = true; //I don't think this need to happen.
                 *state = W;
             }
             if (*state == C){
                 *state = S;
+                *reqWriteback = true;
             }
             profINVX.inc();
             break;
         case INV: //invalidate
             assert(*state != I);
-            if (*state == D || *state == W) *reqWriteback = true;
+            if (*state == D || *state == W || *state == C) *reqWriteback = true;
             *state = I;
             profINV.inc();
             break;
@@ -196,8 +202,6 @@ void DCWSOLIBottomCC::processInval(Address lineAddr, uint32_t lineId, InvType ty
                     break;
                 case W:
                     *reqWriteback = true;
-                    *state = S;
-                    break;
                 case S:
                     *state = O;
                     break;
@@ -344,6 +348,7 @@ uint64_t DCWSOLITopCC::processAccess(Address lineAddr, uint32_t lineId, AccessTy
             if (e->exclusive == true){
                 if (e->winner != childId){
                     *childState = L;
+                    e->sharers[childId] = true;
                     e->numSharers++;
                     if (e->numSharers == 2){
                         //TODO send contention message to the child - I think I have modified sendInvalidates to do this
@@ -375,6 +380,32 @@ uint64_t DCWSOLITopCC::processAccess(Address lineAddr, uint32_t lineId, AccessTy
             break;
 
         default: panic("!?");
+    }
+
+// Check code added to help debug, should be removed
+    uint32_t temp = e->numSharers;
+    for (uint32_t c=0; c<MAX_CACHE_CHILDREN; ++c){
+        if (e->sharers[c]){
+            --temp;
+        }
+    }
+    if (temp > 0){
+        unsigned int marker = 0;
+        switch (type){
+            case PUTX:
+                marker = 1;
+                break;
+            case PUTS:
+                marker = 2;
+                break;
+            case GETX:
+                marker = 3;
+                break;
+            case GETS:
+                marker = 4;
+                break;
+        }
+        panic("sharer tracking failed in processAccess, marker = %u", marker);
     }
 
     return respCycle;
