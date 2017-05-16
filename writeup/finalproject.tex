@@ -84,9 +84,9 @@
 
 \section{Introduction}\label{sec:intro}
 
-In an effort to simplify the complexity and improve the scalability of cache coherence schemes, some researchers have begun looking at the benefits of restricted forms of parallelism. For example, it could be reasonable to assume that parallel programs are \textit{data-race free} (DRF). Under this restriction, it is possible to obtain improved performance with a simplified protocol \cite{choi2010denovo} \cite{ros2012complexity}.
+In an effort to simplify the complexity and improve the scalability of cache coherence schemes, some researchers have begun looking at the benefits of restricted forms of parallelism. For example, it could be reasonable to assume that parallel programs are \textit{data-race free} (DRF). Under this restriction, it is possible to obtain improved performance with a simplified protocol \cite{choi2010denovo, ros2012complexity}.
 
-However, while DRF programs are common, there are some programs which benefit from ``well-behaved'' data races. For example, consider the following algorithm, based on the Sieve of Erastosthenes, which generates less than $n$ in parallel.
+However, while DRF programs are common, there are some programs which benefit from ``well-behaved'' data races. For example, consider the following algorithm, based on the Sieve of Erastosthenes, which generates all primes less than $n$ in parallel.
 
 \begin{lstlisting}
 function primes(n) {
@@ -105,7 +105,7 @@ This algorithm relies on multiple processors writing to the same flag at the sam
 
 In the example algorithm above, there is an added guarantee that concurrent writes to the same location will always be writing the same value. In general, we will not require this, as will be discussed in more detail later.
 
-The term ``phase-concurrent" is inspired by Shun and Blelloch's work on concurrent hash tables \cite{shun2014phase}.
+The term ``phase-concurrent'' is inspired by Shun and Blelloch's work on concurrent hash tables \cite{shun2014phase}.
 
 \section{Definitions and Semantics}
 
