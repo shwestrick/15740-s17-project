@@ -287,32 +287,32 @@ The above states and transition events are coordinated in a message-passing styl
 
 Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3).
 
-Some of the more interesting transitions are discussed below.
+Some of the more interesting transitions in the L1 cache are discussed below.
 \begin{itemize}
   \item Receiving a \textbf{Co} while in \textbf{D}: this occurs when another
-  process issues a write after we already wrote to the line. In this scenario,
-  we become the winner and the other line becomes a loser. This is one of the
+  process issues a write after the current process successfully wrote to the line. In this scenario,
+  the current process becomes the winner and the other process becomes a loser. This is one of the
   core mechanics of the protocol. It describes the mechanics of both losing
   exclusivity and managing winners for phase-concurrency.
   \item Transitioning from \textbf{W} to \textbf{O} at a barrier: note that it
   is also correct to transition to \textbf{C} instead of \textbf{O}. However,
   we predict that in the general case, a line which had conflicting accesses in
-  the past will likely have concurrent reads in the futures. Thus transitioning
-  to \textbf{O} reduces the amount of coherence traffic.
+  the past will likely have concurrent reads in the futures. Transitioning
+  to \textbf{O} reduces the latency of accesses by other processes through keeping the information at the directory rather than the last L1 cache.
   \item Notifications for \textbf{D \textrightarrow{} C} and
   \textbf{C \textrightarrow{} D} transitions: notice that even for private data,
   the L1 caches send messages (\textbf{Wr\textsubscript{i}} and \textbf{Cl\textsubscript{i}})
   to the directory at writes and reads. This is to
   make sure the directory is always informed of the current state of the owner,
-  which simplifies its logic. The performance penalty is small, because there
+  which simplifies its logic and allows the directory to more efficiently transition upon contention. The performance penalty is small, because there
   will be at most 2 messages sent per barrier (the design of parallel
   algorithms typically aims to eliminate synchronization as much as possible,
   so barriers should be infrequent).
   \item Issuing writes while in \textbf{S}: it might at first seem in violation
-  of phase-concurrency for a write to be issued while in \textbf{S}, because we
+  of phase-concurrency for a write to be issued while in \textbf{S}, since we
   arrive in \textbf{S} due to concurrent reads and therefore must be in a
-  read phase. However, this is incorrect. The directory is not always able to
-  know of exclusivity, and may need to send someone to \textbf{S} conservatively
+  read phase. However, this is incorrect. The directory does not always
+  know of exclusivity, and may need to send a process to \textbf{S} conservatively
   at an \textbf{Ac\textsubscript{i}} message even when it would be correct to
   send them to \textbf{C}. For this reason, writes are permitted while in
   \textbf{S}, and the same logic as for \textbf{O} is used.
