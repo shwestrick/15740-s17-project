@@ -60,6 +60,17 @@
  organization={ACM}
 }
 
+@article{blumofe1999scheduling,
+  title={Scheduling multithreaded computations by work stealing},
+  author={Blumofe, Robert D and Leiserson, Charles E},
+  journal={Journal of the ACM (JACM)},
+  volume={46},
+  number={5},
+  pages={720--748},
+  year={1999},
+  publisher={ACM}
+}
+
 \end{filecontents*}
 
 \addbibresource{general.bib}
@@ -70,7 +81,7 @@
 
 \maketitle
 
-\section{Introduction}
+\section{Introduction}\label{sec:intro}
 
 In an effort to simplify the complexity and improve the scalability of cache coherence schemes, some researchers have begun looking at the benefits of restricted forms of parallelism. For example, it could be reasonable to assume that parallel programs are \textit{data-race free} (DRF). Under this restriction, it is possible to obtain improved performance with a simplified protocol \cite{choi2010denovo} \cite{ros2012complexity}.
 
@@ -78,14 +89,14 @@ However, while DRF programs are common, there are some programs which benefit fr
 
 \begin{lstlisting}
 function primes(n) {
- if n < 2 then return {};
- let isPrime = [true : 0 $\leq$ i < n];
- foreach p in primes($\sqrt{n}$) {
- foreach k where 2 $\leq$ k < $\lceil n/p \rceil$ {
- isPrime[p $\cdot$ k] := false;
- }
- }
- return {$i$ : 2 $\leq$ i < n | isPrime[i]};
+  if n < 2 then return {};
+  let isPrime = [true : 0 $\leq$ i < n];
+  foreach p in primes($\sqrt{n}$) {
+    foreach k where 2 $\leq$ k < $\lceil n/p \rceil$ {
+      isPrime[p $\cdot$ k] := false;
+    }
+  }
+  return {$i$ : 2 $\leq$ i < n | isPrime[i]};
 }
 \end{lstlisting}
 
@@ -107,15 +118,15 @@ Under this definition, phase-concurrent programs must rely on read-modify-write 
 
 \begin{lstlisting}
 function sum_array(a) {
- // initially s == 2
- r[p] := 0;
- for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
- 	r[p] := r[p] + a[i];
- }
- if (sub-and-fetch(s,1) == 0) {
- 	// exactly one process will execute this
- 	printf("%d\n", r[0] + r[1]);
- }
+  // initially s == 2
+  r[p] := 0;
+  for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
+    r[p] := r[p] + a[i];
+  }
+  if (sub-and-fetch(s,1) == 0) {
+    // exactly one process will execute this
+    printf("%d\n", r[0] + r[1]);
+  }
 }
 \end{lstlisting}
 
@@ -133,13 +144,13 @@ For example, we can modify the array-sum example to print not only the sum of th
 \begin{lstlisting}
 r[p] := 0;
 for i where p $\cdot$ n $\leq$ i < (p+1) $\cdot$ n {
- r[p] := r[p] + a[i];
+  r[p] := r[p] + a[i];
 }
 w := 42; // this value will never be visible
 w := p;
 if (sub-and-fetch(s,1) == 0) {
- printf("sum: %d\n", r[0] + r[1]);
- printf("winner: %d\n", w);
+  printf("sum: %d\n", r[0] + r[1]);
+  printf("winner: %d\n", w);
 }
 \end{lstlisting}
 
@@ -152,7 +163,7 @@ At the end of a write phase, we need to commit the winning write back to the dir
 
 Our first approach to phase-concurrent cache coherence was predicated on the following axioms. Each writer either ``wins'' or ``loses'' --- as a simplest approach, the first writer wins; the shared LLC acts as a directory, as in DeNovo \cite{choi2010denovo}; the winning writer's data must be flushed at a barrier; and the state can transition due to reads, writes, barriers, and directory interactions. This led to our first cache coherence protocol, which we termed WSI, with three states: \textbf{W}inner, \textbf{S}hared, and \textbf{I}nvalid.
 
-Intuitively, WSI ensures that data can only be in the Shared state during a read phase; during a write phase, data can be in either Winner or Invalid, depending on whether or not the corresponding processor won the write-write race. 
+Intuitively, WSI ensures that data can only be in the Shared state during a read phase; during a write phase, data can be in either Winner or Invalid, depending on whether or not the corresponding processor won the write-write race.
 
 For a particular line in an L1 cache, the events which cause state transitions are as follows.
 
@@ -186,7 +197,7 @@ Although WSI is a correct cache coherence policy for phase-concurrent programs, 
 \textbf{Private data ($W \rightarrow D, C, W$)}:
 In this protocol, we must always conservatively ``reset'' (i.e., transition to Invalid) at all barriers. However, if a processor has exclusive access to a memory location, then interacting with the directory and transitioning into Shared or Invalid are inefficient, the intuition being that if no other processor is trying to access the data, there is no need for communication overhead or unnecessary transitions to states that implicitly assume that more than one processor has access to the data. In order to deal with exclusive data, we created two new states, $D$ and $C$, corresponding to Exclusive Dirty and Exclusive Clean, respectively, in which processors have private ownership of the data.
 
-\textbf{Losers ($I \rightarrow L, I$)}: 
+\textbf{Losers ($I \rightarrow L, I$)}:
 By the semantics of phase concurrency, if a processor has lost a write-write race in a write phase, then none of its writes can ever be accepted as valid in this phase. However, because the failed writer will be in Invalid, it has to query the directory upon each attempted write to determine whether or not it won the race. This is clearly quite inefficient and led us to create a new state, \textbf{Loser}, from whence all write attempts fail immediately without communication with the directory.
 
 \textbf{Back-to-back read phases ($S \rightarrow S, O$)}:
@@ -277,12 +288,30 @@ Transitions for the directory:
 \end{tabular}
 \end{table}
 
-Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3). 
+Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3).
 
 \todo{Add explanations for transitions + proof of correctness}
 
-\section{Simulation Results}
+\section{Simulations}
 \todo{Fill in results here: hits + traffic from Charlie}
+
+Using a homegrown simulator, we have verified the correctness of the DCWSOLI
+protocol on two sample programs, summarized below. On both programs, we ran
+the simulator with many different input sizes and number of processors.
+\begin{itemize}
+  \item \texttt{primes}: as in the example given in Section~\ref{sec:intro},
+  this program calculates all primes below a given number in parallel via the
+  Sieve of Eratosthenes.
+  \item \texttt{hashing}: this program constructs a hash set containing the
+  elements of $[n]$ by, on each round, attempting to insert all remaining
+  keys and retrying on the next round for those that do not succeed (due to
+  losing a write-race). We use open addressing with linear probing.
+\end{itemize}
+Of course, these programs alone are not representative enough to prove that
+our protocol is correct in general. For example, both programs are statically
+scheduled in a BSP style. However, one could imagine writing a phase-concurrent
+work-stealing scheduler (\cite{blumofe1999scheduling}) in order to support
+dynamically scheduled, structured parallel computations.
 
 \section{Discussion}
 \todo{Fill in here}
