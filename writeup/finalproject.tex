@@ -14,6 +14,7 @@
 \usepackage{parskip} % for indentation
 \usepackage{graphicx} % for images
 \usepackage{tikz} % more images
+\usepackage{textcomp}
 
 
 % table line break packages
@@ -207,7 +208,7 @@ Together, these optimizations transformed our original WSI protocol to DCWSOLI, 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.3\textwidth]{img/posterfig2.png}
+\includegraphics[width=0.4\textwidth]{img/posterfig2.png}
 \caption{Basic cache coherence protocol and optimizations.}
 \label{wsi-to-dcwsoli}
 \end{figure}
@@ -252,29 +253,25 @@ For a particular line in the directory, the events which cause state transitions
 \subsection{Cache Coherence Protocol}
 The above states and transition events are coordinated in a message-passing style as follows. Transitions marked - are impossible, and those marked ~\frownie~ violate phase-concurrency.
 
-Transitions for L1 cache $i$. All messages are sent to (and received from) the directory only. For transitions written $A/B$, we transition to $A$ if the directory replies with an accept and $B$ if it rejects.
-
 \begin{table}[H]
 \centering
-\caption{Cache transitions.}
+\caption{Transitions for L1 cache $i$. All messages are sent to (and received from) the directory only. For transitions written $A/B$, we transition to $A$ if the directory replies with an accept and $B$ if it rejects.}
 \label{cache-protocol}
 \begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline
  & \textbf{D} & \textbf{C} & \textbf{W} & \textbf{S} & \textbf{O} & \textbf{L} & \textbf{I} \\ \hline
 \textbf{Wr} & D & \makecell{Send Wr\textsubscript{i};\\ D} & W & \makecell{Send Wr\textsubscript{i};\\ D/L} & \makecell{Send Wr\textsubscript{i};\\ D/L} & L & \makecell{Send Wr\textsubscript{i};\\ D/L} \\ \hline
 \textbf{Re} & D & C & \frownie & S & S & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} & \makecell{Send Ac\textsubscript{i};\\ Receive data;\\ C/S} \\ \hline
-\textbf{Ba} & \makecell{Send Cl\_i;\\ C} & C & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O & I & I & I \\ \hline
+\textbf{Ba} & \makecell{Send Cl\textsubscript{i};\\ C} & C & \makecell{Send Sh\textsubscript{i};\\ Send data;\\ O} & O & I & I & I \\ \hline
 \textbf{Co} & W & I & - & - & - & - & - \\ \hline
 \textbf{Fo} & - & \makecell{Send data;\\ S} & - & - & - & - & - \\ \hline
 \textbf{Ev} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & \makecell{Send Fl\textsubscript{i};\\ Send data;\\ I} & I & I & I & - \\ \hline
 \end{tabular}
 \end{table}
 
-Transitions for the directory:
-
 \begin{table}[H]
 \centering
-\caption{Directory transitions.}
+\caption{Transitions for the directory.}
 \label{directory-protocol}
 \begin{tabular}{|c|c|c|c|c|c|}
 \hline
@@ -290,14 +287,45 @@ Transitions for the directory:
 
 Note that there are only five directory states, so there will be no asymptotic space overhead, as these states can be encapsulated in a constant number of specially treated bits (in this case, 3).
 
-\todo{Add explanations for transitions + proof of correctness}
+Some of the more interesting transitions are discussed below.
+\begin{itemize}
+  \item Receiving a \textbf{Co} while in \textbf{D}: this occurs when another
+  process issues a write after we already wrote to the line. In this scenario,
+  we become the winner and the other line becomes a loser. This is one of the
+  core mechanics of the protocol. It describes the mechanics of both losing
+  exclusivity and managing winners for phase-concurrency.
+  \item Transitioning from \textbf{W} to \textbf{O} at a barrier: note that it
+  is also correct to transition to \textbf{C} instead of \textbf{O}. However,
+  we predict that in the general case, a line which had conflicting accesses in
+  the past will likely have concurrent reads in the futures. Thus transitioning
+  to \textbf{O} reduces the amount of coherence traffic.
+  \item Notifications for \textbf{D \textrightarrow{} C} and
+  \textbf{C \textrightarrow{} D} transitions: notice that even for private data,
+  the L1 caches send messages (\textbf{Wr\textsubscript{i}} and \textbf{Cl\textsubscript{i}})
+  to the directory at writes and reads. This is to
+  make sure the directory is always informed of the current state of the owner,
+  which simplifies its logic. The performance penalty is small, because there
+  will be at most 2 messages sent per barrier (the design of parallel
+  algorithms typically aims to eliminate synchronization as much as possible,
+  so barriers should be infrequent).
+  \item Issuing writes while in \textbf{S}: it might at first seem in violation
+  of phase-concurrency for a write to be issued while in \textbf{S}, because we
+  arrive in \textbf{S} due to concurrent reads and therefore must be in a
+  read phase. However, this is incorrect. The directory is not always able to
+  know of exclusivity, and may need to send someone to \textbf{S} conservatively
+  at an \textbf{Ac\textsubscript{i}} message even when it would be correct to
+  send them to \textbf{C}. For this reason, writes are permitted while in
+  \textbf{S}, and the same logic as for \textbf{O} is used.
+\end{itemize}
 
 \section{Simulations}
-\todo{Fill in results here: hits + traffic from Charlie}
 
 Using a homegrown simulator, we have verified the correctness of the DCWSOLI
-protocol on two sample programs, summarized below. On both programs, we ran
-the simulator with many different input sizes and number of processors.
+protocol on two sample programs, summarized below. Our simulator implements
+DCWSOLI assuming that all transitions are atomic (in practice, there would
+likely be many transient states in the protocol to handle race conditions).
+On both programs, we ran the simulator with many different input sizes and a
+a varying number of processors.
 \begin{itemize}
   \item \texttt{primes}: as in the example given in Section~\ref{sec:intro},
   this program calculates all primes below a given number in parallel via the
@@ -317,8 +345,8 @@ Unfortunately, due to various technical difficulties, we were unable to conduct
 an empirical evaluation comparing our performance against state-of-the-art
 protocols such as MESI/MOESI.
 
-\section{Discussion}
-\todo{Fill in here}
+% \section{Discussion}
+% \todo{Fill in here}
 
 \section{Future Extensions}
 \textbf{Sub-cacheline granularity}: As mentioned previously, our current scheme interprets memory at the granularity of cache lines. It is possible to extend this scheme to sub-cacheline granularity, in a way similar to that of DeNovo, at a potentially linear factor of memory overhead in the size of each cache line \cite{choi2010denovo}. Intuitively, supporting sub-cacheline granularity involves replicating each cache line and keeping track of part of each copy of the line. To be precise, if there are $k$ memory locations in cache line $L$, create lines $L_1, \dots, L_k$ and for line $L_i$, classify the entire line solely based on the state of memory location $i$. This therefore requires an extra $\log k$ bits for bookkeeping on each of $k-1$ new copies of each cache line, resulting in $k \log k$ times as much space per original cache line.
